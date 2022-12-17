@@ -338,15 +338,15 @@ namespace evgen {
     int                 fAngleDist;      ///< How to distribute angles (gaus, uniform)
 
 //CHECK
-	std::vector<double> fP1;             
-	std::vector<double> fSigmaP1;        
-	int fP1Dist;         
-	std::vector<double> fBeta;           
-	std::vector<double> fSigmaBeta;      
-	int fBetaDist;       
-	std::vector<double> fRollingAng;     
+	std::vector<double> fP1;
+	std::vector<double> fSigmaP1;
+	int                 fP1Dist;
+	std::vector<double> fBeta;
+	std::vector<double> fSigmaBeta;
+	int                 fBetaDist;
+	std::vector<double> fRollingAng;
 	std::vector<double> fSigmaRollingAng;
-	int fRollingAngDist; 
+	int                 fRollingAngDist;
 //CHECK
 
     std::string fHistFileName;               ///< Filename containing histogram of momenta
@@ -590,7 +590,7 @@ namespace evgen{
   {
     // do not put seed in reconfigure because we don't want to reset 
     // the seed midstream
-    std::vector<std::string> vlist(15);
+    std::vector<std::string> vlist(21);
     vlist[0]  = "PDG";
     vlist[1]  = "P0";
     vlist[2]  = "SigmaP";
@@ -610,13 +610,10 @@ namespace evgen{
 	//CHECK
 	vlist[15] = "P1";             
 	vlist[16] = "SigmaP1";        
-	vlist[17] = "P1Dist";         
-	vlist[18] = "Beta";           
-	vlist[19] = "SigmaBeta";      
-	vlist[20] = "BetaDist";       
-	vlist[21] = "RollingAng";     
-	vlist[22] = "SigmaRollingAng";
-	vlist[23] = "RollingAngDist"; 
+	vlist[17] = "Beta";           
+	vlist[18] = "SigmaBeta";      
+	vlist[19] = "RollingAng";     
+	vlist[20] = "SigmaRollingAng";
 
 
 //    vlist[15] = "PHist";
@@ -626,22 +623,28 @@ namespace evgen{
     // begin tests for multiple particle error possibilities  
     std::string list;
     if (fPDist != kHIST) {
-      if( !this->PadVector(fP0          ) ){ list.append(vlist[1].append(", \n")); }
-      if( !this->PadVector(fSigmaP      ) ){ list.append(vlist[2].append(", \n")); }
+      if( !this->PadVector(fP0            ) ){ list.append(vlist[1].append(", \n")); }
+      if( !this->PadVector(fSigmaP        ) ){ list.append(vlist[2].append(", \n")); }
     }
-    if( !this->PadVector(fX0          ) ){ list.append(vlist[3].append(", \n")); }
-    if( !this->PadVector(fY0          ) ){ list.append(vlist[4].append(", \n")); }
-    if( !this->PadVector(fZ0          ) ){ list.append(vlist[5].append(", \n")); }
-    if( !this->PadVector(fSigmaX      ) ){ list.append(vlist[6].append(", \n")); }
-    if( !this->PadVector(fSigmaY      ) ){ list.append(vlist[7].append(", \n")); }
-    if( !this->PadVector(fSigmaZ      ) ){ list.append(vlist[8].append(", \n")); }
-    if( !this->PadVector(fTheta0XZ    ) ){ list.append(vlist[9].append(", \n")); }
-    if( !this->PadVector(fTheta0YZ    ) ){ list.append(vlist[10].append(", \n")); }
-    if( !this->PadVector(fSigmaThetaXZ) ){ list.append(vlist[11].append(", \n")); }
-    if( !this->PadVector(fSigmaThetaYZ) ){ list.append(vlist[12].append("  \n")); }
-    if( !this->PadVector(fT0          ) ){ list.append(vlist[13].append(", \n")); }
-    if( !this->PadVector(fSigmaT      ) ){ list.append(vlist[14].append(", \n")); }
-
+    if( !this->PadVector(fX0              ) ){ list.append(vlist[3].append(", \n")); }
+    if( !this->PadVector(fY0              ) ){ list.append(vlist[4].append(", \n")); }
+    if( !this->PadVector(fZ0              ) ){ list.append(vlist[5].append(", \n")); }
+    if( !this->PadVector(fSigmaX          ) ){ list.append(vlist[6].append(", \n")); }
+    if( !this->PadVector(fSigmaY          ) ){ list.append(vlist[7].append(", \n")); }
+    if( !this->PadVector(fSigmaZ          ) ){ list.append(vlist[8].append(", \n")); }
+    if( !this->PadVector(fTheta0XZ        ) ){ list.append(vlist[9].append(", \n")); }
+    if( !this->PadVector(fTheta0YZ        ) ){ list.append(vlist[10].append(", \n")); }
+    if( !this->PadVector(fSigmaThetaXZ    ) ){ list.append(vlist[11].append(", \n")); }
+    if( !this->PadVector(fSigmaThetaYZ    ) ){ list.append(vlist[12].append("  \n")); }
+    if( !this->PadVector(fT0              ) ){ list.append(vlist[13].append(", \n")); }
+    if( !this->PadVector(fSigmaT          ) ){ list.append(vlist[14].append(", \n")); }
+//CHECK
+    if( !this->PadVector(fP1              ) ){ list.append(vlist[15].append(", \n")); }
+    if( !this->PadVector(fSigmaP1         ) ){ list.append(vlist[16].append(", \n")); }
+    if( !this->PadVector(fBeta            ) ){ list.append(vlist[17].append(", \n")); }
+    if( !this->PadVector(fSigmaBeta       ) ){ list.append(vlist[18].append(", \n")); }
+    if( !this->PadVector(fRollingAng      ) ){ list.append(vlist[19].append(", \n")); }
+    if( !this->PadVector(fSigmaRollingAng ) ){ list.append(vlist[20].append(", \n")); }
     
 
     if(list.size() > 0)
