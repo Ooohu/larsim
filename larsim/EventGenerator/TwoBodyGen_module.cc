@@ -106,16 +106,16 @@ namespace evgen {
         [this](){ return !fromHistogram(PDist()); }
       };
 	  //CHECK
-	  fhicl::Atom<std::string> P1Dist{
-		  Name("P1Dist"),
+	  fhicl::Atom<std::string> P1portionDist{
+		  Name("P1portionDist"),
 			  Comment("daughter momentum distribution type: " + presentOptions(DistributionNames)),
 			  optionName(kHIST, DistributionNames)};
 
-	  fhicl::Sequence<double> P1{Name("P1"),
+	  fhicl::Sequence<double> P1portion{Name("P1portion"),
 		  Comment("central daughter momentum (GeV/c) to generate"),
 		  [this]() { return !fromHistogram(PDist()); }};
 
-	  fhicl::Sequence<double> SigmaP1{Name("SigmaP1"),
+	  fhicl::Sequence<double> SigmaP1portion{Name("SigmaP1portion"),
 		  Comment("variation in daughter momenta (GeV/c)"),
 		  [this]() { return !fromHistogram(PDist()); }};
 
@@ -339,9 +339,9 @@ namespace evgen {
     int                 fAngleDist;      ///< How to distribute angles (gaus, uniform)
 
 //CHECK
-	std::vector<double> fP1;
-	std::vector<double> fSigmaP1;
-	int                 fP1Dist;
+	std::vector<double> fP1portion;
+	std::vector<double> fSigmaP1portion;
+	int                 fP1portionDist;
 	std::vector<double> fTheta0XZEXT;
 	std::vector<double> fSigmaTheta0XZEXT;
 	int                 fTheta0XZEXTDist;
@@ -551,9 +551,9 @@ namespace evgen{
     , fSigmaThetaYZ (config().SigmaThetaYZ())
     , fAngleDist    (selectOption(config().AngleDist(), DistributionNames))
 //CHECK
-    , fP1(config().P1())
-    , fSigmaP1(config().SigmaP1())
-    , fP1Dist(selectOption(config().P1Dist(), DistributionNames))
+    , fP1portion(config().P1portion())
+    , fSigmaP1portion(config().SigmaP1portion())
+    , fP1portionDist(selectOption(config().P1portionDist(), DistributionNames))
     , fTheta0XZEXT(config().Theta0XZEXT())
     , fSigmaTheta0XZEXT(config().SigmaTheta0XZEXT())
     , fTheta0XZEXTDist(selectOption(config().Theta0XZEXTDist(), DistributionNames))
@@ -609,8 +609,8 @@ namespace evgen{
     vlist[14] = "SigmaT";
 
 	//CHECK
-	vlist[15] = "P1";             
-	vlist[16] = "SigmaP1";        
+	vlist[15] = "P1portion";             
+	vlist[16] = "SigmaP1portion";        
 	vlist[17] = "Theta0XZEXT";           
 	vlist[18] = "SigmaTheta0XZEXT";      
 	vlist[19] = "Theta0YZEXT";     
@@ -640,8 +640,8 @@ namespace evgen{
     if( !this->PadVector(fT0              ) ){ list.append(vlist[13].append(", \n")); }
     if( !this->PadVector(fSigmaT          ) ){ list.append(vlist[14].append(", \n")); }
 //CHECK
-    if( !this->PadVector(fP1              ) ){ list.append(vlist[15].append(", \n")); }
-    if( !this->PadVector(fSigmaP1         ) ){ list.append(vlist[16].append(", \n")); }
+    if( !this->PadVector(fP1portion              ) ){ list.append(vlist[15].append(", \n")); }
+    if( !this->PadVector(fSigmaP1portion         ) ){ list.append(vlist[16].append(", \n")); }
     if( !this->PadVector(fTheta0XZEXT            ) ){ list.append(vlist[17].append(", \n")); }
     if( !this->PadVector(fSigmaTheta0XZEXT       ) ){ list.append(vlist[18].append(", \n")); }
     if( !this->PadVector(fTheta0YZEXT      ) ){ list.append(vlist[19].append(", \n")); }
@@ -956,9 +956,10 @@ namespace evgen{
 		if(fverbose){
 			std::cout<<"-------- Summary of Particles Kinematics ---------"<<std::endl;
 			std::cout<<std::setw(5)<<"#par ";
-			std::cout<<std::setw(11)<<"px ";
-			std::cout<<std::setw(11)<<"py ";
-			std::cout<<std::setw(11)<<"pz ";
+			std::cout<<std::setw(13)<<"px ";
+			std::cout<<std::setw(13)<<"py ";
+			std::cout<<std::setw(13)<<"pz ";
+			std::cout<<std::setw(11)<<"E ";
 			std::cout<<std::setw(7)<<"x ";
 			std::cout<<std::setw(7)<<"y ";
 			std::cout<<std::setw(7)<<"z ";
@@ -970,7 +971,7 @@ namespace evgen{
 		CLHEP::RandFlat   flat(*fEngine);
 		CLHEP::RandGaussQ gauss(*fEngine);
 
-		//STEP1 Choose position, all particles come from the same position
+		//STEP1portion Choose position, all particles come from the same position
 		TVector3 x;
 		if (fPosDist == kGAUS) {
 			x[0] = gauss.fire(fX0[0], fSigmaX[0]);;
@@ -1047,9 +1048,10 @@ namespace evgen{
 
 		if(fverbose){
 			std::cout<<std::setw(5)<<i;
-			std::cout<<std::setw(11)<<p0vec.Px();
-			std::cout<<std::setw(11)<<p0vec.Py();
-			std::cout<<std::setw(11)<<p0vec.Pz();
+			std::cout<<std::setw(13)<<p0vec.Px();
+			std::cout<<std::setw(13)<<p0vec.Py();
+			std::cout<<std::setw(13)<<p0vec.Pz();
+			std::cout<<std::setw(11)<<p0vec.E();
 			std::cout<<std::setw(7)<<pos.X();
 			std::cout<<std::setw(7)<<pos.Y();
 			std::cout<<std::setw(7)<<pos.Z();
@@ -1109,15 +1111,14 @@ namespace evgen{
 			double Theta0XZEXTrad=Theta0XZEXT*M_PI/180.0;	
 			double Theta0YZEXTrad=Theta0YZEXT*M_PI/180.0;
 
-			if (fPDist == kGAUS) {
-				p = gauss.fire(fP0[index], fSigmaP[index]);
-			}
-			else if (fPDist == kHIST){
-				p = SelectFromHist(*(hPHist[index]));
+
+			if (fP1portionDist == kGAUS) {//p1vec[last_index] = p0vec upon initialization;
+				p = gauss.fire(fP1portion[index], fSigmaP1portion[index])*p1vec[last_index].P();
 			}
 			else {
-				p = fP0[index] + fSigmaP[index]*(2.0*flat.fire()-1.0);
+				p = (fP1portion[index] + fSigmaP1portion[index]*(2.0*flat.fire()-1.0))*p1vec[last_index].P();
 			}
+
 
 			TLorentzVector pvec(p*std::cos(Theta0YZEXTrad)*std::sin(Theta0XZEXTrad),
 					p*std::sin(Theta0YZEXTrad),
@@ -1150,9 +1151,10 @@ namespace evgen{
 		for (unsigned int index(0); index<fPDG.size(); ++index){
 			if(fverbose){
 				std::cout<<std::setw(5)<<index;
-				std::cout<<std::setw(11)<<p1vec[index].Px();
-				std::cout<<std::setw(11)<<p1vec[index].Py();
-				std::cout<<std::setw(11)<<p1vec[index].Pz();
+				std::cout<<std::setw(13)<<p1vec[index].Px();
+				std::cout<<std::setw(13)<<p1vec[index].Py();
+				std::cout<<std::setw(13)<<p1vec[index].Pz();
+				std::cout<<std::setw(11)<<p1vec[index].E();
 				std::cout<<std::setw(7)<<pos.X();
 				std::cout<<std::setw(7)<<pos.Y();
 				std::cout<<std::setw(7)<<pos.Z();
