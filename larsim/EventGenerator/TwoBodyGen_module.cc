@@ -3,6 +3,7 @@
 /// \brief Generator for hypothetical particles that decay into two particles
 ///
 /// Module designed to produce two random particles decay from one mother particle
+/// Compared to SingleGen,  void SampleMany(simb::MCTruth &mct); is heavily modified.
 ///
 /// \author keng.lin@rutgers.edu
 ////////////////////////////////////////////////////////////////////////
@@ -118,26 +119,26 @@ namespace evgen {
 		  Comment("variation in daughter momenta (GeV/c)"),
 		  [this]() { return !fromHistogram(PDist()); }};
 
-	  fhicl::Atom<std::string> BetaDist{
-		  Name("BetaDist"),
+	  fhicl::Atom<std::string> Theta0XZEXTDist{
+		  Name("Theta0XZEXTDist"),
 			  Comment("angular distribution type: " + presentOptions(DistributionNames)),
 			  optionName(kHIST, DistributionNames)};
 
-	  fhicl::Sequence<double> Beta{Name("Beta"),
-		  Comment("Beta angle respected to mother particle momentum (degrees)")};
+	  fhicl::Sequence<double> Theta0XZEXT{Name("Theta0XZEXT"),
+		  Comment("Theta0XZEXT angle respected to mother particle momentum (degrees)")};
 
-	  fhicl::Sequence<double> SigmaBeta{Name("SigmaBeta"),
+	  fhicl::Sequence<double> SigmaTheta0XZEXT{Name("SigmaTheta0XZEXT"),
 		  Comment("variation in beta angle (degrees)")};
 
-	  fhicl::Atom<std::string> RollingAngDist{
-		  Name("RollingAngDist"),
+	  fhicl::Atom<std::string> Theta0YZEXTDist{
+		  Name("Theta0YZEXTDist"),
 			  Comment("angular distribution type: " + presentOptions(DistributionNames)),
 			  optionName(kHIST, DistributionNames)};
 
-	  fhicl::Sequence<double> RollingAng{Name("RollingAng"),
-		  Comment("RollingAng angle respected to mother particle momentum (degrees)")};
+	  fhicl::Sequence<double> Theta0YZEXT{Name("Theta0YZEXT"),
+		  Comment("Theta0YZEXT angle respected to mother particle momentum (degrees)")};
 
-	  fhicl::Sequence<double> SigmaRollingAng{Name("SigmaRollingAng"),
+	  fhicl::Sequence<double> SigmaTheta0YZEXT{Name("SigmaTheta0YZEXT"),
 		  Comment("variation in beta angle (degrees)")};
  //CHECK
 
@@ -341,12 +342,12 @@ namespace evgen {
 	std::vector<double> fP1;
 	std::vector<double> fSigmaP1;
 	int                 fP1Dist;
-	std::vector<double> fBeta;
-	std::vector<double> fSigmaBeta;
-	int                 fBetaDist;
-	std::vector<double> fRollingAng;
-	std::vector<double> fSigmaRollingAng;
-	int                 fRollingAngDist;
+	std::vector<double> fTheta0XZEXT;
+	std::vector<double> fSigmaTheta0XZEXT;
+	int                 fTheta0XZEXTDist;
+	std::vector<double> fTheta0YZEXT;
+	std::vector<double> fSigmaTheta0YZEXT;
+	int                 fTheta0YZEXTDist;
 //CHECK
 
     std::string fHistFileName;               ///< Filename containing histogram of momenta
@@ -553,12 +554,12 @@ namespace evgen{
     , fP1(config().P1())
     , fSigmaP1(config().SigmaP1())
     , fP1Dist(selectOption(config().P1Dist(), DistributionNames))
-    , fBeta(config().Beta())
-    , fSigmaBeta(config().SigmaBeta())
-    , fBetaDist(selectOption(config().BetaDist(), DistributionNames))
-    , fRollingAng(config().RollingAng())
-    , fSigmaRollingAng(config().SigmaRollingAng())
-    , fRollingAngDist(selectOption(config().RollingAngDist(), DistributionNames))
+    , fTheta0XZEXT(config().Theta0XZEXT())
+    , fSigmaTheta0XZEXT(config().SigmaTheta0XZEXT())
+    , fTheta0XZEXTDist(selectOption(config().Theta0XZEXTDist(), DistributionNames))
+    , fTheta0YZEXT(config().Theta0YZEXT())
+    , fSigmaTheta0YZEXT(config().SigmaTheta0YZEXT())
+    , fTheta0YZEXTDist(selectOption(config().Theta0YZEXTDist(), DistributionNames))
 //CHECK
     , fHistFileName (config().HistogramFile())
     , fPHist        (config().PHist())
@@ -610,10 +611,10 @@ namespace evgen{
 	//CHECK
 	vlist[15] = "P1";             
 	vlist[16] = "SigmaP1";        
-	vlist[17] = "Beta";           
-	vlist[18] = "SigmaBeta";      
-	vlist[19] = "RollingAng";     
-	vlist[20] = "SigmaRollingAng";
+	vlist[17] = "Theta0XZEXT";           
+	vlist[18] = "SigmaTheta0XZEXT";      
+	vlist[19] = "Theta0YZEXT";     
+	vlist[20] = "SigmaTheta0YZEXT";
 
 
 //    vlist[15] = "PHist";
@@ -641,10 +642,10 @@ namespace evgen{
 //CHECK
     if( !this->PadVector(fP1              ) ){ list.append(vlist[15].append(", \n")); }
     if( !this->PadVector(fSigmaP1         ) ){ list.append(vlist[16].append(", \n")); }
-    if( !this->PadVector(fBeta            ) ){ list.append(vlist[17].append(", \n")); }
-    if( !this->PadVector(fSigmaBeta       ) ){ list.append(vlist[18].append(", \n")); }
-    if( !this->PadVector(fRollingAng      ) ){ list.append(vlist[19].append(", \n")); }
-    if( !this->PadVector(fSigmaRollingAng ) ){ list.append(vlist[20].append(", \n")); }
+    if( !this->PadVector(fTheta0XZEXT            ) ){ list.append(vlist[17].append(", \n")); }
+    if( !this->PadVector(fSigmaTheta0XZEXT       ) ){ list.append(vlist[18].append(", \n")); }
+    if( !this->PadVector(fTheta0YZEXT      ) ){ list.append(vlist[19].append(", \n")); }
+    if( !this->PadVector(fSigmaTheta0YZEXT ) ){ list.append(vlist[20].append(", \n")); }
     
 
     if(list.size() > 0)
@@ -949,114 +950,219 @@ namespace evgen{
   // Draw the type, momentum and position for all particles from the 
   // FCIHL description.  Start positions will all match but momenta and angles drawn from
   // distributions defined in the fhicls
-  void TwoBodyGen::SampleMany(simb::MCTruth &mct){
+	void TwoBodyGen::SampleMany(simb::MCTruth &mct){
 
-    CLHEP::RandFlat   flat(*fEngine);
-    CLHEP::RandGaussQ gauss(*fEngine);
+		bool fverbose = true;
+		if(fverbose){
+			std::cout<<"-------- Summary of Particles Kinematics ---------"<<std::endl;
+			std::cout<<std::setw(5)<<"#par ";
+			std::cout<<std::setw(11)<<"px ";
+			std::cout<<std::setw(11)<<"py ";
+			std::cout<<std::setw(11)<<"pz ";
+			std::cout<<std::setw(7)<<"x ";
+			std::cout<<std::setw(7)<<"y ";
+			std::cout<<std::setw(7)<<"z ";
+			std::cout<<std::setw(7)<<"T ";
+			std::cout<<std::endl;
+		}
 
-    // Choose position
-    TVector3 x;
-    if (fPosDist == kGAUS) {
-      x[0] = gauss.fire(fX0[0], fSigmaX[0]);;
-      x[1] = gauss.fire(fY0[0], fSigmaY[0]);
-      x[2] = gauss.fire(fZ0[0], fSigmaZ[0]);
-    }
-    else {
-      x[0] = fX0[0] + fSigmaX[0]*(2.0*flat.fire()-1.0);
-      x[1] = fY0[0] + fSigmaY[0]*(2.0*flat.fire()-1.0);
-      x[2] = fZ0[0] + fSigmaZ[0]*(2.0*flat.fire()-1.0);
-    }
+		//CHECK, modify this one! 
+		CLHEP::RandFlat   flat(*fEngine);
+		CLHEP::RandGaussQ gauss(*fEngine);
 
-    double t = 0.;
-    if(fTDist==kGAUS){
-      t = gauss.fire(fT0[0], fSigmaT[0]);
-    }
-    else{
-      t = fT0[0] + fSigmaT[0]*(2.0*flat.fire()-1.0);
-    }
+		//STEP1 Choose position, all particles come from the same position
+		TVector3 x;
+		if (fPosDist == kGAUS) {
+			x[0] = gauss.fire(fX0[0], fSigmaX[0]);;
+			x[1] = gauss.fire(fY0[0], fSigmaY[0]);
+			x[2] = gauss.fire(fZ0[0], fSigmaZ[0]);
+		}
+		else {
+			x[0] = fX0[0] + fSigmaX[0]*(2.0*flat.fire()-1.0);
+			x[1] = fY0[0] + fSigmaY[0]*(2.0*flat.fire()-1.0);
+			x[2] = fZ0[0] + fSigmaZ[0]*(2.0*flat.fire()-1.0);
+		}
 
-    TLorentzVector pos(x[0], x[1], x[2], t);
-    
-    // loop through particles and select momenta and angles
-    for (unsigned int i(0); i<fPDG.size(); ++i){
-      // Choose momentum
-      double p = 0.0;
-      double m = 0.0;
-      if (fPDist == kGAUS) {
-        p = gauss.fire(fP0[i], fSigmaP[i]);
-      }
-      else if (fPDist == kHIST){
-        p = SelectFromHist(*(hPHist[i]));
-      }
-      else {
-        p = fP0[i] + fSigmaP[i]*(2.0*flat.fire()-1.0);
-      }
-  
-      static TDatabasePDG  pdgt;
-      TParticlePDG* pdgp = pdgt.GetParticle(fPDG[i]);
-      if (pdgp) m = pdgp->Mass();
-     
-  
-      // Choose angles
-      double thxz = 0;
-      double thyz = 0;
-      
-      double thyzrads = 0; 
-      double thyzradsplussigma = 0;
-      double thyzradsminussigma = 0;
-  
-      if (fAngleDist == kGAUS) {
-        thxz = gauss.fire(fTheta0XZ[i], fSigmaThetaXZ[i]);
-        thyz = gauss.fire(fTheta0YZ[i], fSigmaThetaYZ[i]);
-      }
-      else if (fAngleDist == kHIST){
-        double thetaxz = 0;
-        double thetayz = 0;
-        SelectFromHist(*(hThetaXzYzHist[i]), thetaxz, thetayz);
-        thxz = (180./M_PI)*thetaxz;
-        thyz = (180./M_PI)*thetayz;
-      }
-      else {
-        
-        // Choose angles flat in phase space, which is flat in theta_xz 
-        // and flat in sin(theta_yz).
-     
-        thxz = fTheta0XZ[i] + fSigmaThetaXZ[i]*(2.0*flat.fire()-1.0);
-       
-        thyzrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZ[i]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
-        thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaThetaYZ[i]))), M_PI/2.);
-        thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaThetaYZ[i]))), -M_PI/2.);
-           
-        //uncomment line to print angular variation info
-        //std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
-  
-        double sinthyzmin = std::sin(thyzradsminussigma);
-        double sinthyzmax = std::sin(thyzradsplussigma);
-        double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
-        thyz = (180. / M_PI) * std::asin(sinthyz);
-      }
-      
-      double thxzrad=thxz*M_PI/180.0;	
-      double thyzrad=thyz*M_PI/180.0;
-  
-      TLorentzVector pvec(p*std::cos(thyzrad)*std::sin(thxzrad),
-  			p*std::sin(thyzrad),
-  			p*std::cos(thxzrad)*std::cos(thyzrad),
-  			std::sqrt(p*p+m*m));
-   
-      // set track id to -i as these are all primary particles and have id <= 0
-      int trackid = -1*(i+1);
-      std::string primary("primary");
-  
-      simb::MCParticle part(trackid, fPDG[i], primary);
-      part.AddTrajectoryPoint(pos, pvec);
-  
-      //std::cout << "Px: " <<  pvec.Px() << " Py: " << pvec.Py() << " Pz: " << pvec.Pz() << std::endl;
-      //std::cout << "x: " <<  pos.X() << " y: " << pos.Y() << " z: " << pos.Z() << " time: " << pos.T() << std::endl;
-      //std::cout << "YZ Angle: " << (thyzrad * (180./M_PI)) << " XZ Angle: " << (thxzrad * (180./M_PI)) << std::endl; 
-      mct.Add(part);
-    }
-  }
+		double t = 0.;
+		if(fTDist==kGAUS){
+			t = gauss.fire(fT0[0], fSigmaT[0]);
+		}
+		else{
+			t = fT0[0] + fSigmaT[0]*(2.0*flat.fire()-1.0);
+		}
+
+		TLorentzVector pos(x[0], x[1], x[2], t);
+
+
+		//STEP2 Prepare the mother particle, we only need the momentum, p0vec
+		// Choose momentum
+		double p = 0.0;
+		int i = 0;
+		if (fPDist == kGAUS) {
+			p = gauss.fire(fP0[i], fSigmaP[i]);
+		}
+		else if (fPDist == kHIST){
+			p = SelectFromHist(*(hPHist[i]));
+		}
+		else {
+			p = fP0[i] + fSigmaP[i]*(2.0*flat.fire()-1.0);
+		}
+
+		//STEP2.1 Choose angles
+		double thxz = 0;//0,360degrees
+		double thyz = 0;//-90degrees,90degrees
+
+		if (fAngleDist == kGAUS) {
+			thxz = gauss.fire(fTheta0XZ[i], fSigmaThetaXZ[i]);
+			thyz = gauss.fire(fTheta0YZ[i], fSigmaThetaYZ[i]);
+		}
+		else if (fAngleDist == kHIST){
+			double thetaxz = 0;
+			double thetayz = 0;
+			SelectFromHist(*(hThetaXzYzHist[i]), thetaxz, thetayz);
+			thxz = (180./M_PI)*thetaxz;
+			thyz = (180./M_PI)*thetayz;
+		} 
+		else { // Choose angles flat in phase space, which is flat in theta_xz 
+			// and flat in sin(theta_yz).
+
+			thxz = fTheta0XZ[i] + fSigmaThetaXZ[i]*(2.0*flat.fire()-1.0);
+
+			double thyzrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZ[i]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
+			double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaThetaYZ[i]))), M_PI/2.);
+			double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaThetaYZ[i]))), -M_PI/2.);
+
+			//std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
+
+			double sinthyzmin = std::sin(thyzradsminussigma);
+			double sinthyzmax = std::sin(thyzradsplussigma);
+			double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
+			thyz = (180. / M_PI) * std::asin(sinthyz);
+		}
+
+		TLorentzVector p0vec(p*std::cos(thyz*M_PI/180.0)*std::sin(thxz*M_PI/180.0),
+				p*std::sin(thyz*M_PI/180.0),
+				p*std::cos(thxz*M_PI/180.0)*std::cos(thyz*M_PI/180.0),
+				std::sqrt(p*p+0*0));
+
+		if(fverbose){
+			std::cout<<std::setw(5)<<i;
+			std::cout<<std::setw(11)<<p0vec.Px();
+			std::cout<<std::setw(11)<<p0vec.Py();
+			std::cout<<std::setw(11)<<p0vec.Pz();
+			std::cout<<std::setw(7)<<pos.X();
+			std::cout<<std::setw(7)<<pos.Y();
+			std::cout<<std::setw(7)<<pos.Z();
+			std::cout<<std::setw(7)<<pos.T();
+			std::cout<<std::endl;
+		}
+
+		//STEP3, daughter particles from the same mother with TLorentzVector p0vec
+		// loop through particles and select momenta and angles
+		std::vector<TLorentzVector> p1vec(fPDG.size(), p0vec);
+		unsigned int last_index = fPDG.size()-1;
+		for (unsigned int index(0); index<last_index; ++index){
+			// Choose momentum
+			double p = 0.0;
+			double m = 0.0;
+
+			static TDatabasePDG  pdgt;
+			TParticlePDG* pdgp = pdgt.GetParticle(fPDG[index]);
+			if (pdgp) m = pdgp->Mass();
+
+
+			// Choose angles, inherited from mother's thxz, thyz
+			double Theta0XZEXT = thxz;
+			double Theta0YZEXT = thyz;
+
+			if (fAngleDist == kGAUS) {
+				Theta0XZEXT = Theta0XZEXT + gauss.fire(fTheta0XZEXT[index], fSigmaTheta0XZEXT[index]);
+				Theta0YZEXT = Theta0YZEXT + gauss.fire(fTheta0YZEXT[index], fSigmaTheta0YZEXT[index]);
+			}
+			else if (fAngleDist == kHIST){
+				double thetaxz = 0;
+				double thetayz = 0;
+				SelectFromHist(*(hThetaXzYzHist[index]), thetaxz, thetayz);
+				Theta0XZEXT = Theta0XZEXT + (180./M_PI)*thetaxz;
+				Theta0YZEXT = Theta0YZEXT + (180./M_PI)*thetayz;
+			}
+			else {
+
+				// Choose angles flat in phase space, which is flat in theta_xz 
+				// and flat in sin(theta_yz).
+
+				Theta0XZEXT = Theta0XZEXT + fTheta0XZEXT[index] + fSigmaTheta0XZEXT[index]*(2.0*flat.fire()-1.0);
+
+				double Theta0YZEXTrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZEXT[index]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
+				double Theta0YZEXTradsplussigma = TMath::Min((Theta0YZEXTrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[index]))), M_PI/2.);
+				double Theta0YZEXTradsminussigma = TMath::Max((Theta0YZEXTrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[index]))), -M_PI/2.);
+
+				//uncomment line to print angular variation info
+				//std::cout << "Central angle: " << (180./M_PI)*Theta0YZEXTrads << " Max angle: " << (180./M_PI)*Theta0YZEXTradsplussigma << " Min angle: " << (180./M_PI)*Theta0YZEXTradsminussigma << std::endl; 
+
+				double sinTheta0YZEXTmin = std::sin(Theta0YZEXTradsminussigma);
+				double sinTheta0YZEXTmax = std::sin(Theta0YZEXTradsplussigma);
+				double sinTheta0YZEXT = sinTheta0YZEXTmin + flat.fire() * (sinTheta0YZEXTmax - sinTheta0YZEXTmin);
+				Theta0YZEXT = Theta0YZEXT + (180. / M_PI) * std::asin(sinTheta0YZEXT);
+			}
+
+			double Theta0XZEXTrad=Theta0XZEXT*M_PI/180.0;	
+			double Theta0YZEXTrad=Theta0YZEXT*M_PI/180.0;
+
+			if (fPDist == kGAUS) {
+				p = gauss.fire(fP0[index], fSigmaP[index]);
+			}
+			else if (fPDist == kHIST){
+				p = SelectFromHist(*(hPHist[index]));
+			}
+			else {
+				p = fP0[index] + fSigmaP[index]*(2.0*flat.fire()-1.0);
+			}
+
+			TLorentzVector pvec(p*std::cos(Theta0YZEXTrad)*std::sin(Theta0XZEXTrad),
+					p*std::sin(Theta0YZEXTrad),
+					p*std::cos(Theta0XZEXTrad)*std::cos(Theta0YZEXTrad),
+					std::sqrt(p*p+m*m));
+
+			p1vec[index] = pvec; 
+			//STEP3.1 the remaining particle helps conserving the mother momentum and energy
+			p1vec[last_index] -= pvec;
+
+			//		std::cout << "--CHECK Px: " <<  pvec.Px() << " Py: " << pvec.Py() << " Pz: " << pvec.Pz() << std::endl;
+			//		std::cout << "x: " <<  pos.X() << " y: " << pos.Y() << " z: " << pos.Z() << " time: " << pos.T() << std::endl;
+			//		std::cout << "Rolling Angle: " << (Theta0YZEXTrad * (180./M_PI)) << " Theta0XZEXT Angle: " << (Theta0XZEXTrad * (180./M_PI)) << std::endl; 
+
+			// set track id to -index as these are all primary particles and have id <= 0
+			int trackid = -1*(index+1);
+			std::string primary("primary");
+
+			simb::MCParticle part(trackid, fPDG[index], primary);
+			part.AddTrajectoryPoint(pos, p1vec[index]);
+			mct.Add(part);
+		}
+
+		//STEP3.2 Add the last daughter as a MCParticle
+		simb::MCParticle part(-1*(last_index+1), fPDG[last_index], "primary");
+		part.AddTrajectoryPoint(pos, p1vec[last_index]);
+		mct.Add(part);
+		
+		//Print daughter's information
+		for (unsigned int index(0); index<fPDG.size(); ++index){
+			if(fverbose){
+				std::cout<<std::setw(5)<<index;
+				std::cout<<std::setw(11)<<p1vec[index].Px();
+				std::cout<<std::setw(11)<<p1vec[index].Py();
+				std::cout<<std::setw(11)<<p1vec[index].Pz();
+				std::cout<<std::setw(7)<<pos.X();
+				std::cout<<std::setw(7)<<pos.Y();
+				std::cout<<std::setw(7)<<pos.Z();
+				std::cout<<std::setw(7)<<pos.T();
+				//	std::cout<<std::setw(9)<<Theta0XZEXT;
+				//	std::cout<<std::setw(9)<<Theta0YZEXT;
+				std::cout<<std::endl;
+			}
+		}
+	}
 
 
   //____________________________________________________________________________
