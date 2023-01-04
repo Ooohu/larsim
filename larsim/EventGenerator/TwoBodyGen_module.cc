@@ -119,8 +119,8 @@ namespace evgen {
 		  Comment("variation in daughter momenta (GeV/c)"),
 		  [this]() { return !fromHistogram(PDist()); }};
 
-	  fhicl::Atom<std::string> Theta0XZEXTDist{
-		  Name("Theta0XZEXTDist"),
+	  fhicl::Atom<std::string> AngEXTDist{
+		  Name("AngEXTDist"),
 			  Comment("angular distribution type: " + presentOptions(DistributionNames)),
 			  optionName(kHIST, DistributionNames)};
 
@@ -129,11 +129,6 @@ namespace evgen {
 
 	  fhicl::Sequence<double> SigmaTheta0XZEXT{Name("SigmaTheta0XZEXT"),
 		  Comment("variation in beta angle (degrees)")};
-
-	  fhicl::Atom<std::string> Theta0YZEXTDist{
-		  Name("Theta0YZEXTDist"),
-			  Comment("angular distribution type: " + presentOptions(DistributionNames)),
-			  optionName(kHIST, DistributionNames)};
 
 	  fhicl::Sequence<double> Theta0YZEXT{Name("Theta0YZEXT"),
 		  Comment("Theta0YZEXT angle respected to mother particle momentum (degrees)")};
@@ -344,10 +339,9 @@ namespace evgen {
 	int                 fP1portionDist;
 	std::vector<double> fTheta0XZEXT;
 	std::vector<double> fSigmaTheta0XZEXT;
-	int                 fTheta0XZEXTDist;
+	int                 fAngEXTDist;
 	std::vector<double> fTheta0YZEXT;
 	std::vector<double> fSigmaTheta0YZEXT;
-	int                 fTheta0YZEXTDist;
 //CHECK
 
     std::string fHistFileName;               ///< Filename containing histogram of momenta
@@ -556,10 +550,9 @@ namespace evgen{
     , fP1portionDist(selectOption(config().P1portionDist(), DistributionNames))
     , fTheta0XZEXT(config().Theta0XZEXT())
     , fSigmaTheta0XZEXT(config().SigmaTheta0XZEXT())
-    , fTheta0XZEXTDist(selectOption(config().Theta0XZEXTDist(), DistributionNames))
+    , fAngEXTDist(selectOption(config().AngEXTDist(), DistributionNames))
     , fTheta0YZEXT(config().Theta0YZEXT())
     , fSigmaTheta0YZEXT(config().SigmaTheta0YZEXT())
-    , fTheta0YZEXTDist(selectOption(config().Theta0YZEXTDist(), DistributionNames))
 //CHECK
     , fHistFileName (config().HistogramFile())
     , fPHist        (config().PHist())
@@ -1039,6 +1032,8 @@ namespace evgen{
 			double sinthyzmax = std::sin(thyzradsplussigma);
 			double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
 			thyz = (180. / M_PI) * std::asin(sinthyz);
+
+			if(fverbose) std::cout<<"Set angles XZ "<<thxz<<" YZ: "<<thyz<<std::endl;
 		}
 
 		TLorentzVector p0vec(p*std::cos(thyz*M_PI/180.0)*std::sin(thxz*M_PI/180.0),
@@ -1074,60 +1069,58 @@ namespace evgen{
 
 
 			// Choose angles, inherited from mother's thxz, thyz
-			double Theta0XZEXT = thxz;
-			double Theta0YZEXT = thyz;
+			double Theta0XZEXT_shifted = thxz;
+			double Theta0YZEXT_shifted = thyz;
 
-			if (fAngleDist == kGAUS) {
-				Theta0XZEXT = Theta0XZEXT + gauss.fire(fTheta0XZEXT[index], fSigmaTheta0XZEXT[index]);
-				Theta0YZEXT = Theta0YZEXT + gauss.fire(fTheta0YZEXT[index], fSigmaTheta0YZEXT[index]);
-			}
-			else if (fAngleDist == kHIST){
-				double thetaxz = 0;
-				double thetayz = 0;
-				SelectFromHist(*(hThetaXzYzHist[index]), thetaxz, thetayz);
-				Theta0XZEXT = Theta0XZEXT + (180./M_PI)*thetaxz;
-				Theta0YZEXT = Theta0YZEXT + (180./M_PI)*thetayz;
+			if (fAngEXTDist == kGAUS) {
+				Theta0XZEXT_shifted = thxz + gauss.fire(fTheta0XZEXT[index], fSigmaTheta0XZEXT[index]);
+				Theta0YZEXT_shifted = thyz + gauss.fire(fTheta0YZEXT[index], fSigmaTheta0YZEXT[index]);
 			}
 			else {
 
 				// Choose angles flat in phase space, which is flat in theta_xz 
 				// and flat in sin(theta_yz).
 
-				Theta0XZEXT = Theta0XZEXT + fTheta0XZEXT[index] + fSigmaTheta0XZEXT[index]*(2.0*flat.fire()-1.0);
+				Theta0XZEXT_shifted = thxz + fTheta0XZEXT[index] + fSigmaTheta0XZEXT[index]*(2.0*flat.fire()-1.0);
 
 				double Theta0YZEXTrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZEXT[index]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
 				double Theta0YZEXTradsplussigma = TMath::Min((Theta0YZEXTrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[index]))), M_PI/2.);
 				double Theta0YZEXTradsminussigma = TMath::Max((Theta0YZEXTrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[index]))), -M_PI/2.);
 
 				//uncomment line to print angular variation info
-				//std::cout << "Central angle: " << (180./M_PI)*Theta0YZEXTrads << " Max angle: " << (180./M_PI)*Theta0YZEXTradsplussigma << " Min angle: " << (180./M_PI)*Theta0YZEXTradsminussigma << std::endl; 
+				std::cout <<"Index "<<index<< " Central angle: " << fTheta0YZEXT[index]<<" or "<<(180./M_PI)*Theta0YZEXTrads << " Max angle: " << (180./M_PI)*Theta0YZEXTradsplussigma << " Min angle: " << (180./M_PI)*Theta0YZEXTradsminussigma << std::endl; 
 
 				double sinTheta0YZEXTmin = std::sin(Theta0YZEXTradsminussigma);
 				double sinTheta0YZEXTmax = std::sin(Theta0YZEXTradsplussigma);
 				double sinTheta0YZEXT = sinTheta0YZEXTmin + flat.fire() * (sinTheta0YZEXTmax - sinTheta0YZEXTmin);
-				Theta0YZEXT = Theta0YZEXT + (180. / M_PI) * std::asin(sinTheta0YZEXT);
+				Theta0YZEXT_shifted = thyz + (180. / M_PI) * std::asin(sinTheta0YZEXT);
 			}
 
-			double Theta0XZEXTrad=Theta0XZEXT*M_PI/180.0;	
-			double Theta0YZEXTrad=Theta0YZEXT*M_PI/180.0;
+			if(fverbose) std::cout<<"Shifted angles XZ "<<Theta0XZEXT_shifted<<" YZ: "<<Theta0YZEXT_shifted<<std::endl;
+
+			double Theta0XZEXT_shifted_rad=Theta0XZEXT_shifted*M_PI/180.0;	
+			double Theta0YZEXT_shifted_rad=Theta0YZEXT_shifted*M_PI/180.0;
 
 
 			if (fP1portionDist == kGAUS) {//p1vec[last_index] = p0vec upon initialization;
 				p = gauss.fire(fP1portion[index], fSigmaP1portion[index])*p1vec[last_index].P();
 			}
 			else {
-				p = (fP1portion[index] + fSigmaP1portion[index]*(2.0*flat.fire()-1.0))*p1vec[last_index].P();
+				double p_modified = (fP1portion[index] + fSigmaP1portion[index]*(2.0*flat.fire()-1.0));
+				p = p_modified*p1vec[last_index].P();
+				if(fverbose) std::cout<<"Take the portaion of momentum "<<p_modified<<" to particle "<< index <<" with "<<p1vec[last_index].P()<<std::endl;
 			}
 
 
-			TLorentzVector pvec(p*std::cos(Theta0YZEXTrad)*std::sin(Theta0XZEXTrad),
-					p*std::sin(Theta0YZEXTrad),
-					p*std::cos(Theta0XZEXTrad)*std::cos(Theta0YZEXTrad),
+			TLorentzVector pvec(p*std::cos(Theta0YZEXT_shifted_rad)*std::sin(Theta0XZEXT_shifted_rad),
+					p*std::sin(Theta0YZEXT_shifted_rad),
+					p*std::cos(Theta0XZEXT_shifted_rad)*std::cos(Theta0YZEXT_shifted_rad),
 					std::sqrt(p*p+m*m));
 
 			p1vec[index] = pvec; 
 			//STEP3.1 the remaining particle helps conserving the mother momentum and energy
 			p1vec[last_index] -= pvec;
+			p1vec[last_index].SetE( TMath::Sqrt( pow(p1vec[last_index].Px(),2) + pow(p1vec[last_index].Py(),2) + pow(p1vec[last_index].Pz(),2)) );
 
 			//		std::cout << "--CHECK Px: " <<  pvec.Px() << " Py: " << pvec.Py() << " Pz: " << pvec.Pz() << std::endl;
 			//		std::cout << "x: " <<  pos.X() << " y: " << pos.Y() << " z: " << pos.Z() << " time: " << pos.T() << std::endl;
@@ -1159,8 +1152,6 @@ namespace evgen{
 				std::cout<<std::setw(7)<<pos.Y();
 				std::cout<<std::setw(7)<<pos.Z();
 				std::cout<<std::setw(7)<<pos.T();
-				//	std::cout<<std::setw(9)<<Theta0XZEXT;
-				//	std::cout<<std::setw(9)<<Theta0YZEXT;
 				std::cout<<std::endl;
 			}
 		}
