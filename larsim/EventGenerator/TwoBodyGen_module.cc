@@ -106,17 +106,17 @@ namespace evgen {
         [this](){ return !fromHistogram(PDist()); }
       };
 	  //CHECK
-	  fhicl::Atom<std::string> P1portionDist{
-		  Name("P1portionDist"),
-			  Comment("daughter momentum distribution type: " + presentOptions(DistributionNames)),
+	  fhicl::Atom<std::string> MotherMassDist{
+		  Name("MotherMassDist"),
+			  Comment("mother mass distribution type: " + presentOptions(DistributionNames)),
 			  optionName(kHIST, DistributionNames)};
 
-	  fhicl::Sequence<double> P1portion{Name("P1portion"),
-		  Comment("central daughter momentum (GeV/c) to generate"),
+	  fhicl::Sequence<double> MotherMass{Name("MotherMass"),
+		  Comment("mother mass (GeV/c^2) to generate"),
 		  [this]() { return !fromHistogram(PDist()); }};
 
-	  fhicl::Sequence<double> SigmaP1portion{Name("SigmaP1portion"),
-		  Comment("variation in daughter momenta (GeV/c)"),
+	  fhicl::Sequence<double> SigmaMotherMass{Name("SigmaMotherMass"),
+		  Comment("variation in mother mass (GeV/c^2)"),
 		  [this]() { return !fromHistogram(PDist()); }};
 
 	  fhicl::Atom<std::string> AngEXTDist{
@@ -334,9 +334,9 @@ namespace evgen {
     int                 fAngleDist;      ///< How to distribute angles (gaus, uniform)
 
 //CHECK
-	std::vector<double> fP1portion;
-	std::vector<double> fSigmaP1portion;
-	int                 fP1portionDist;
+	std::vector<double> fMotherMass;
+	std::vector<double> fSigmaMotherMass;
+	int                 fMotherMassDist;
 	std::vector<double> fTheta0XZEXT;
 	std::vector<double> fSigmaTheta0XZEXT;
 	int                 fAngEXTDist;
@@ -545,9 +545,9 @@ namespace evgen{
     , fSigmaThetaYZ (config().SigmaThetaYZ())
     , fAngleDist    (selectOption(config().AngleDist(), DistributionNames))
 //CHECK
-    , fP1portion(config().P1portion())
-    , fSigmaP1portion(config().SigmaP1portion())
-    , fP1portionDist(selectOption(config().P1portionDist(), DistributionNames))
+    , fMotherMass(config().MotherMass())
+    , fSigmaMotherMass(config().SigmaMotherMass())
+    , fMotherMassDist(selectOption(config().MotherMassDist(), DistributionNames))
     , fTheta0XZEXT(config().Theta0XZEXT())
     , fSigmaTheta0XZEXT(config().SigmaTheta0XZEXT())
     , fAngEXTDist(selectOption(config().AngEXTDist(), DistributionNames))
@@ -602,8 +602,8 @@ namespace evgen{
     vlist[14] = "SigmaT";
 
 	//CHECK
-	vlist[15] = "P1portion";             
-	vlist[16] = "SigmaP1portion";        
+	vlist[15] = "MotherMass";             
+	vlist[16] = "SigmaMotherMass";        
 	vlist[17] = "Theta0XZEXT";           
 	vlist[18] = "SigmaTheta0XZEXT";      
 	vlist[19] = "Theta0YZEXT";     
@@ -633,8 +633,8 @@ namespace evgen{
     if( !this->PadVector(fT0              ) ){ list.append(vlist[13].append(", \n")); }
     if( !this->PadVector(fSigmaT          ) ){ list.append(vlist[14].append(", \n")); }
 //CHECK
-    if( !this->PadVector(fP1portion              ) ){ list.append(vlist[15].append(", \n")); }
-    if( !this->PadVector(fSigmaP1portion         ) ){ list.append(vlist[16].append(", \n")); }
+    if( !this->PadVector(fMotherMass              ) ){ list.append(vlist[15].append(", \n")); }
+    if( !this->PadVector(fSigmaMotherMass         ) ){ list.append(vlist[16].append(", \n")); }
     if( !this->PadVector(fTheta0XZEXT            ) ){ list.append(vlist[17].append(", \n")); }
     if( !this->PadVector(fSigmaTheta0XZEXT       ) ){ list.append(vlist[18].append(", \n")); }
     if( !this->PadVector(fTheta0YZEXT      ) ){ list.append(vlist[19].append(", \n")); }
@@ -948,7 +948,6 @@ namespace evgen{
 		bool fverbose = true;
 		if(fverbose){
 			std::cout<<"-------- Summary of Particles Kinematics ---------"<<std::endl;
-			std::cout<<std::setw(5)<<"#par ";
 			std::cout<<std::setw(13)<<"px ";
 			std::cout<<std::setw(13)<<"py ";
 			std::cout<<std::setw(13)<<"pz ";
@@ -964,7 +963,7 @@ namespace evgen{
 		CLHEP::RandFlat   flat(*fEngine);
 		CLHEP::RandGaussQ gauss(*fEngine);
 
-		//STEP1portion Choose position, all particles come from the same position
+		//Choose position, all particles come from the same position
 		TVector3 x;
 		if (fPosDist == kGAUS) {
 			x[0] = gauss.fire(fX0[0], fSigmaX[0]);;
@@ -991,40 +990,50 @@ namespace evgen{
 		//STEP2 Prepare the mother particle, we only need the momentum, p0vec
 		// Choose momentum
 		double p = 0.0;
-		int i = 0;
+
 		if (fPDist == kGAUS) {
-			p = gauss.fire(fP0[i], fSigmaP[i]);
+			p = gauss.fire(fP0[0], fSigmaP[0]);
 		}
 		else if (fPDist == kHIST){
-			p = SelectFromHist(*(hPHist[i]));
+			p = SelectFromHist(*(hPHist[0]));
 		}
 		else {
-			p = fP0[i] + fSigmaP[i]*(2.0*flat.fire()-1.0);
+			p = fP0[0] + fSigmaP[0]*(2.0*flat.fire()-1.0);
 		}
 
-		//STEP2.1 Choose angles
+		// Choose mass
+		double m = 0.0;
+		if (fMotherMassDist == kGAUS) {//p1vec[last_index] = p0vec upon initialization;
+			m = gauss.fire(fMotherMass[0], fSigmaMotherMass[0]);
+		}
+		else {
+			m = fMotherMass[0] + fSigmaMotherMass[0]*(2.0*flat.fire()-1.0);
+		}
+
+
+		// Choose angles
 		double thxz = 0;//0,360degrees
 		double thyz = 0;//-90degrees,90degrees
 
 		if (fAngleDist == kGAUS) {
-			thxz = gauss.fire(fTheta0XZ[i], fSigmaThetaXZ[i]);
-			thyz = gauss.fire(fTheta0YZ[i], fSigmaThetaYZ[i]);
+			thxz = gauss.fire(fTheta0XZ[0], fSigmaThetaXZ[0]);
+			thyz = gauss.fire(fTheta0YZ[0], fSigmaThetaYZ[0]);
 		}
 		else if (fAngleDist == kHIST){
 			double thetaxz = 0;
 			double thetayz = 0;
-			SelectFromHist(*(hThetaXzYzHist[i]), thetaxz, thetayz);
+			SelectFromHist(*(hThetaXzYzHist[0]), thetaxz, thetayz);
 			thxz = (180./M_PI)*thetaxz;
 			thyz = (180./M_PI)*thetayz;
 		} 
 		else { // Choose angles flat in phase space, which is flat in theta_xz 
 			// and flat in sin(theta_yz).
 
-			thxz = fTheta0XZ[i] + fSigmaThetaXZ[i]*(2.0*flat.fire()-1.0);
+			thxz = fTheta0XZ[0] + fSigmaThetaXZ[0]*(2.0*flat.fire()-1.0);
 
-			double thyzrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZ[i]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
-			double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaThetaYZ[i]))), M_PI/2.);
-			double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaThetaYZ[i]))), -M_PI/2.);
+			double thyzrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZ[0]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
+			double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaThetaYZ[0]))), M_PI/2.);
+			double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaThetaYZ[0]))), -M_PI/2.);
 
 			//std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
 
@@ -1039,10 +1048,9 @@ namespace evgen{
 		TLorentzVector p0vec(p*std::cos(thyz*M_PI/180.0)*std::sin(thxz*M_PI/180.0),
 				p*std::sin(thyz*M_PI/180.0),
 				p*std::cos(thxz*M_PI/180.0)*std::cos(thyz*M_PI/180.0),
-				std::sqrt(p*p+0*0));
+				std::sqrt(p*p+m*m));
 
 		if(fverbose){
-			std::cout<<std::setw(5)<<i;
 			std::cout<<std::setw(13)<<p0vec.Px();
 			std::cout<<std::setw(13)<<p0vec.Py();
 			std::cout<<std::setw(13)<<p0vec.Pz();
@@ -1054,106 +1062,101 @@ namespace evgen{
 			std::cout<<std::endl;
 		}
 
-		//STEP3, daughter particles from the same mother with TLorentzVector p0vec
-		// loop through particles and select momenta and angles
-		std::vector<TLorentzVector> p1vec(fPDG.size(), p0vec);
-		unsigned int last_index = fPDG.size()-1;
-		for (unsigned int index(0); index<last_index; ++index){
-			// Choose momentum
-			double p = 0.0;
-			double m = 0.0;
+		//STEP2, daughter particles at rest frame
 
-			static TDatabasePDG  pdgt;
-			TParticlePDG* pdgp = pdgt.GetParticle(fPDG[index]);
-			if (pdgp) m = pdgp->Mass();
+		// Choose daughter 1 angles
+		double Theta0XZEXT = 0;//0,360degrees
+		double Theta0YZEXT = 0;//-90degrees,90degrees
 
+		if (fAngEXTDist == kGAUS) {
+			Theta0XZEXT = gauss.fire(fTheta0XZEXT[0], fSigmaTheta0XZEXT[0]);
+			Theta0YZEXT = gauss.fire(fTheta0YZEXT[0], fSigmaTheta0YZEXT[0]);
+		}
+		else { // Choose angles flat in phase space, which is flat in theta_xz 
+			// and flat in sin(theta_yz).
 
-			// Choose angles, inherited from mother's thxz, thyz
-			double Theta0XZEXT_shifted = thxz;
-			double Theta0YZEXT_shifted = thyz;
+			Theta0XZEXT = fTheta0XZEXT[0] + fSigmaTheta0XZEXT[0]*(2.0*flat.fire()-1.0);
 
-			if (fAngEXTDist == kGAUS) {
-				Theta0XZEXT_shifted = thxz + gauss.fire(fTheta0XZEXT[index], fSigmaTheta0XZEXT[index]);
-				Theta0YZEXT_shifted = thyz + gauss.fire(fTheta0YZEXT[index], fSigmaTheta0YZEXT[index]);
-			}
-			else {
+			double thyzrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZEXT[0]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
+			double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), M_PI/2.);
+			double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), -M_PI/2.);
 
-				// Choose angles flat in phase space, which is flat in theta_xz 
-				// and flat in sin(theta_yz).
+			//std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
 
-				Theta0XZEXT_shifted = thxz + fTheta0XZEXT[index] + fSigmaTheta0XZEXT[index]*(2.0*flat.fire()-1.0);
-
-				double Theta0YZEXTrads = std::asin(std::sin((M_PI/180.)*(fTheta0YZEXT[index]))); //Taking asin of sin gives value between -Pi/2 and Pi/2 regardless of user input
-				double Theta0YZEXTradsplussigma = TMath::Min((Theta0YZEXTrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[index]))), M_PI/2.);
-				double Theta0YZEXTradsminussigma = TMath::Max((Theta0YZEXTrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[index]))), -M_PI/2.);
-
-				//uncomment line to print angular variation info
-				std::cout <<"Index "<<index<< " Central angle: " << fTheta0YZEXT[index]<<" or "<<(180./M_PI)*Theta0YZEXTrads << " Max angle: " << (180./M_PI)*Theta0YZEXTradsplussigma << " Min angle: " << (180./M_PI)*Theta0YZEXTradsminussigma << std::endl; 
-
-				double sinTheta0YZEXTmin = std::sin(Theta0YZEXTradsminussigma);
-				double sinTheta0YZEXTmax = std::sin(Theta0YZEXTradsplussigma);
-				double sinTheta0YZEXT = sinTheta0YZEXTmin + flat.fire() * (sinTheta0YZEXTmax - sinTheta0YZEXTmin);
-				Theta0YZEXT_shifted = thyz + (180. / M_PI) * std::asin(sinTheta0YZEXT);
-			}
-
-			if(fverbose) std::cout<<"Shifted angles XZ "<<Theta0XZEXT_shifted<<" YZ: "<<Theta0YZEXT_shifted<<std::endl;
-
-			double Theta0XZEXT_shifted_rad=Theta0XZEXT_shifted*M_PI/180.0;	
-			double Theta0YZEXT_shifted_rad=Theta0YZEXT_shifted*M_PI/180.0;
-
-
-			if (fP1portionDist == kGAUS) {//p1vec[last_index] = p0vec upon initialization;
-				p = gauss.fire(fP1portion[index], fSigmaP1portion[index])*p1vec[last_index].P();
-			}
-			else {
-				double p_modified = (fP1portion[index] + fSigmaP1portion[index]*(2.0*flat.fire()-1.0));
-				p = p_modified*p1vec[last_index].P();
-				if(fverbose) std::cout<<"Take the portaion of momentum "<<p_modified<<" to particle "<< index <<" with "<<p1vec[last_index].P()<<std::endl;
-			}
-
-
-			TLorentzVector pvec(p*std::cos(Theta0YZEXT_shifted_rad)*std::sin(Theta0XZEXT_shifted_rad),
-					p*std::sin(Theta0YZEXT_shifted_rad),
-					p*std::cos(Theta0XZEXT_shifted_rad)*std::cos(Theta0YZEXT_shifted_rad),
-					std::sqrt(p*p+m*m));
-
-			p1vec[index] = pvec; 
-			//STEP3.1 the remaining particle helps conserving the mother momentum and energy
-			p1vec[last_index] -= pvec;
-			p1vec[last_index].SetE( TMath::Sqrt( pow(p1vec[last_index].Px(),2) + pow(p1vec[last_index].Py(),2) + pow(p1vec[last_index].Pz(),2)) );
-
-			//		std::cout << "--CHECK Px: " <<  pvec.Px() << " Py: " << pvec.Py() << " Pz: " << pvec.Pz() << std::endl;
-			//		std::cout << "x: " <<  pos.X() << " y: " << pos.Y() << " z: " << pos.Z() << " time: " << pos.T() << std::endl;
-			//		std::cout << "Rolling Angle: " << (Theta0YZEXTrad * (180./M_PI)) << " Theta0XZEXT Angle: " << (Theta0XZEXTrad * (180./M_PI)) << std::endl; 
-
-			// set track id to -index as these are all primary particles and have id <= 0
-			int trackid = -1*(index+1);
-			std::string primary("primary");
-
-			simb::MCParticle part(trackid, fPDG[index], primary);
-			part.AddTrajectoryPoint(pos, p1vec[index]);
-			mct.Add(part);
+			double sinthyzmin = std::sin(thyzradsminussigma);
+			double sinthyzmax = std::sin(thyzradsplussigma);
+			double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
+			Theta0YZEXT = (180. / M_PI) * std::asin(sinthyz);
 		}
 
-		//STEP3.2 Add the last daughter as a MCParticle
-		simb::MCParticle part(-1*(last_index+1), fPDG[last_index], "primary");
-		part.AddTrajectoryPoint(pos, p1vec[last_index]);
-		mct.Add(part);
-		
+
+		// Choose daughter mass (0 for photon)
+		static TDatabasePDG  pdgt;
+		TParticlePDG* pdg1 = pdgt.GetParticle(fPDG[0]);
+		TParticlePDG* pdg2 = pdgt.GetParticle(fPDG[1]);
+		double dm1 = (pdg1)? pdg1->Mass(): 0 ;//daugther 1 mass
+		double dm2 = (pdg2)? pdg2->Mass(): 0 ;
+
+		// daughter momentum is set after daughter masses are set;
+		double p1 = TMath::Sqrt( 
+				pow( (pow(m,2) - pow(dm1,2) + pow(dm2,2) )/(2*m) , 2) - pow(dm2,2)
+				);//conserve p & E in rest frame
+		// daughter 4-momentum rest frame 
+		TLorentzVector p1vec(
+				p1*std::cos(Theta0YZEXT*M_PI/180.0)*std::sin(Theta0XZEXT*M_PI/180.0),
+				p1*std::sin(Theta0YZEXT*M_PI/180.0),
+				p1*std::cos(Theta0XZEXT*M_PI/180.0)*std::cos(Theta0YZEXT*M_PI/180.0),
+				std::sqrt(p1*p1+dm1*dm1));
+
+		std::cout<<" Daughter stat : momentum (rest) "<< p1<<" px "<<p1vec.X()<<std::endl;
+
+		// boost daughter 1 to the lab frame beta^2=1/((m/p^2+1))
+		p1vec.Boost( p0vec.X()/p0vec.E(),
+			p0vec.Y()/p0vec.E(),
+			p0vec.Z()/p0vec.E()
+			);
+//		std::cout<<" Daughter stat : mother mass "<< m <<" boost x "<<-p0vec.X()/p0vec.E()<<std::endl;
+//		std::cout<<" Daughter stat : mother mass "<< m <<" boost y "<<-p0vec.Y()/p0vec.E()<<std::endl;
+//		std::cout<<" Daughter stat : mother mass "<< m <<" boost z "<<-p0vec.Z()/p0vec.E()<<std::endl;
+//		std::cout<<" Daughter stat : mass 1 (lab) "<< dm1<<"  m2 "<<dm2<<std::endl;
+
+		TLorentzVector p2vec(
+				-p1*std::cos(Theta0YZEXT*M_PI/180.0)*std::sin(Theta0XZEXT*M_PI/180.0),
+				-p1*std::sin(Theta0YZEXT*M_PI/180.0),
+				-p1*std::cos(Theta0XZEXT*M_PI/180.0)*std::cos(Theta0YZEXT*M_PI/180.0),
+				std::sqrt(p1*p1+dm2*dm2));
+
+		p2vec.Boost( p0vec.X()/p0vec.E(),
+			p0vec.Y()/p0vec.E(),
+			p0vec.Z()/p0vec.E()
+			);
+
+
+		simb::MCParticle part1(-1, fPDG[0], "primary");
+		part1.AddTrajectoryPoint(pos, p1vec);
+		mct.Add(part1);
+
+		simb::MCParticle part2(-1, fPDG[1], "primary");
+		part2.AddTrajectoryPoint(pos, p2vec);
+		mct.Add(part2);
+
+
 		//Print daughter's information
-		for (unsigned int index(0); index<fPDG.size(); ++index){
-			if(fverbose){
-				std::cout<<std::setw(5)<<index;
-				std::cout<<std::setw(13)<<p1vec[index].Px();
-				std::cout<<std::setw(13)<<p1vec[index].Py();
-				std::cout<<std::setw(13)<<p1vec[index].Pz();
-				std::cout<<std::setw(11)<<p1vec[index].E();
-				std::cout<<std::setw(7)<<pos.X();
-				std::cout<<std::setw(7)<<pos.Y();
-				std::cout<<std::setw(7)<<pos.Z();
-				std::cout<<std::setw(7)<<pos.T();
-				std::cout<<std::endl;
-			}
+		if(fverbose){
+			std::cout<<std::setw(13)<<p1vec.Px();
+			std::cout<<std::setw(13)<<p1vec.Py();
+			std::cout<<std::setw(13)<<p1vec.Pz();
+			std::cout<<std::setw(11)<<p1vec.E();
+			std::cout<<std::setw(7)<<pos.X();
+			std::cout<<std::setw(7)<<pos.Y();
+			std::cout<<std::setw(7)<<pos.Z();
+			std::cout<<std::setw(7)<<pos.T();
+			std::cout<<std::endl;
+			std::cout<<std::setw(13)<<p2vec.Px();
+			std::cout<<std::setw(13)<<p2vec.Py();
+			std::cout<<std::setw(13)<<p2vec.Pz();
+			std::cout<<std::setw(11)<<p2vec.E();
+			std::cout<<std::endl;
 		}
 	}
 
