@@ -1,0 +1,46 @@
+BEGIN_PROLOG
+
+#no experiment specific configurations
+# generate a two body decay from a mother particle
+
+standard_twobodydecay:
+{
+ module_type:           "TwoBodyGen"
+ ParticleSelectionMode: "all"       # 0 = use full list, 1 =  randomly select a single listed particle
+ PadOutVectors:		false	    # false: require all vectors to be same length
+                                    # true:  pad out if a vector is size one	
+ PDG:                   [ 13 ]      # list of pdg codes for particles to make
+ P0:                    [ 6. ]      # central value of momentum for each particle
+ SigmaP:                [ 0. ]      # variation about the central value 
+ PDist:                 "Gaussian"  # 0 - uniform, 1 - gaussian distribution                               
+ X0:                    [ 25. ]     # in cm in world coordinates, ie x = 0 is at the wire plane          
+                                    # and increases away from the wire plane                             
+ Y0:                    [ 0. ]      # in cm in world coordinates, ie y = 0 is at the center of the TPC   
+ Z0:                    [ 20. ]     # in cm in world coordinates, ie z = 0 is at the upstream edge of    
+                                    # the TPC and increases with the beam direction                      
+ T0:                    [ 0. ]      # starting time
+ SigmaX:                [ 0. ]      # variation in the starting x position
+ SigmaY:                [ 0. ]      # variation in the starting y position                            
+ SigmaZ:                [ 0.0 ]     # variation in the starting z position                            
+ SigmaT:                [ 0.0 ]     # variation in the starting time
+ PosDist:               "uniform"   # 0 - uniform, 1 - gaussian
+ TDist:                 "uniform"   # 0 - uniform, 1 - gaussian         
+ Theta0XZ:              [ 0. ]      #angle in XZ plane (degrees)                                         
+ Theta0YZ:              [ -3.3 ]    #angle in YZ plane (degrees)                                         
+ SigmaThetaXZ:          [ 0. ]      #in degrees                                                          
+ SigmaThetaYZ:          [ 0. ]      #in degrees                                                          
+ AngleDist:             "Gaussian"  # 0 - uniform, 1 - gaussian
+
+ MotherMassDist:         "uniform"  # distribution of the mass of the mother particle before decay
+ MotherMass:              [0]		# the mass[GeV] of the mother particle before decay
+ SigmaMotherMass:         [0]		# variation of the mass
+ AngEXTDist:            "uniform"   # angular distribution of the first daughter particle
+ Theta0XZEXT:            [0]        # angle in XZ plane (degrees) of the first daughter particle [0, 360]
+ SigmaTheta0XZEXT:       [0]
+ Theta0YZEXT:            [0]        # angle in YZ plane (degrees) of the first daughter particle [-90, 90]
+ SigmaTheta0YZEXT:       [0]
+
+}
+
+
+END_PROLOG

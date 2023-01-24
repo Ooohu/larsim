@@ -726,10 +726,10 @@ namespace evgen{
     //
     switch (fPDist) {
       case kHIST:
-        if (fPHist.size() != fPDG.size()) {
-          throw art::Exception(art::errors::Configuration)
-            << fPHist.size() << " momentum histograms to describe " << fPDG.size() << " particle types...";
-        }
+        //if (fPHist.size() != fPDG.size()) {
+        //  throw art::Exception(art::errors::Configuration)
+        //    << fPHist.size() << " momentum histograms to describe " << fPDG.size() << " particle types...";
+        //}
         hPHist.reserve(fPHist.size());
         for (auto const& histName: fPHist) {
           TH1* pHist = dynamic_cast<TH1*>(histFile->Get(histName.c_str()));
@@ -992,7 +992,7 @@ namespace evgen{
 		double p = 0.0;
 
 		if (fPDist == kGAUS) {
-			p = gauss.fire(fP0[0], fSigmaP[0]);
+			p = abs(gauss.fire(fP0[0], fSigmaP[0]));// CHECK, use absolute value
 		}
 		else if (fPDist == kHIST){
 			p = SelectFromHist(*(hPHist[0]));
@@ -1081,12 +1081,14 @@ namespace evgen{
 			double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), M_PI/2.);
 			double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), -M_PI/2.);
 
-			//std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
+			std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
 
 			double sinthyzmin = std::sin(thyzradsminussigma);
 			double sinthyzmax = std::sin(thyzradsplussigma);
 			double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
 			Theta0YZEXT = (180. / M_PI) * std::asin(sinthyz);
+
+			if(fverbose) std::cout<<"Set Rest Frame angles XZ "<<Theta0XZEXT<<" YZ: "<<Theta0YZEXT<<std::endl;
 		}
 
 
