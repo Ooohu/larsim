@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////
-/// \file  TwoBodyGen_module.cc
+/// \file  TwoBodyDecayGen_module.cc
 /// \brief Generator for hypothetical particles that decay into two particles
 ///
 /// Module designed to produce two random particles decay from one mother particle
@@ -71,7 +71,7 @@ namespace simb { class MCTruth; }
 namespace evgen {
 
   /// module to produce single or multiple specified particles in the detector
-  class TwoBodyGen : public art::EDProducer {
+  class TwoBodyDecayGen : public art::EDProducer {
 
   public:
     
@@ -268,7 +268,7 @@ namespace evgen {
     using Parameters = art::EDProducer::Table<Config>;
     
     
-    explicit TwoBodyGen(Parameters const& config);
+    explicit TwoBodyDecayGen(Parameters const& config);
 
     // This is called for each event.
     void produce(art::Event& evt);
@@ -428,34 +428,34 @@ namespace evgen {
       std::string defName = "<unknown>"
       );
     
-  }; // class TwoBodyGen
+  }; // class TwoBodyDecayGen
 }
 
 namespace evgen{
 
-  std::map<int, std::string> TwoBodyGen::makeParticleSelectionModeNames() {
+  std::map<int, std::string> TwoBodyDecayGen::makeParticleSelectionModeNames() {
     std::map<int, std::string> names;
     names[int(kSelectAllParts   )] = "all";
     names[int(kSelectOneRandPart)] = "singleRandom";
     return names;
-  } // TwoBodyGen::makeParticleSelectionModeNames()
+  } // TwoBodyDecayGen::makeParticleSelectionModeNames()
   
-  std::map<int, std::string> TwoBodyGen::makeDistributionNames() {
+  std::map<int, std::string> TwoBodyDecayGen::makeDistributionNames() {
     std::map<int, std::string> names;
     names[int(kUNIF)] = "uniform";
     names[int(kGAUS)] = "Gaussian";
     names[int(kHIST)] = "histograms";
     return names;
-  } // TwoBodyGen::makeDistributionNames()
+  } // TwoBodyDecayGen::makeDistributionNames()
   
-  const std::map<int, std::string> TwoBodyGen::ParticleSelectionModeNames
-    = TwoBodyGen::makeParticleSelectionModeNames();
-  const std::map<int, std::string> TwoBodyGen::DistributionNames
-    = TwoBodyGen::makeDistributionNames();
+  const std::map<int, std::string> TwoBodyDecayGen::ParticleSelectionModeNames
+    = TwoBodyDecayGen::makeParticleSelectionModeNames();
+  const std::map<int, std::string> TwoBodyDecayGen::DistributionNames
+    = TwoBodyDecayGen::makeDistributionNames();
   
   
   template <typename OptionList>
-  auto TwoBodyGen::selectOption
+  auto TwoBodyDecayGen::selectOption
     (std::string Option, OptionList const& allowedOptions) -> decltype(auto)
   {
     using key_type = typename OptionList::value_type::first_type;
@@ -479,11 +479,11 @@ namespace evgen{
     }
     catch (std::invalid_argument const&) {}
     throw std::runtime_error("Option '" + Option + "' not supported.");
-  } // TwoBodyGen::selectOption()
+  } // TwoBodyDecayGen::selectOption()
   
   
   template <typename OptionList>
-  std::string TwoBodyGen::presentOptions(
+  std::string TwoBodyDecayGen::presentOptions(
     OptionList const& allowedOptions, bool printKey /* = true */,
     std::initializer_list<typename OptionList::value_type::first_type> exclude /* = {} */
   ) {
@@ -500,27 +500,27 @@ namespace evgen{
         msg += " (" + std::to_string(key) + ")";
     } // for
     return msg;
-  } // TwoBodyGen::presentOptions()
+  } // TwoBodyDecayGen::presentOptions()
   
   
   template <typename OptionList>
-  std::string TwoBodyGen::optionName(
+  std::string TwoBodyDecayGen::optionName(
     typename OptionList::value_type::first_type optionKey,
     OptionList const& allowedOptions,
     std::string defName /* = "<unknown>" */
   ) {
     auto iOption = allowedOptions.find(optionKey);
     return (iOption != allowedOptions.end())? iOption->second: defName;
-  } // TwoBodyGen::optionName()
+  } // TwoBodyDecayGen::optionName()
   
   
   //____________________________________________________________________________
-  bool TwoBodyGen::Config::fromHistogram(std::string const& key) const {
+  bool TwoBodyDecayGen::Config::fromHistogram(std::string const& key) const {
     return selectOption(PDist(), DistributionNames) == kHIST;
-  } // TwoBodyGen::Config::fromHistogram()
+  } // TwoBodyDecayGen::Config::fromHistogram()
   
   //____________________________________________________________________________
-  TwoBodyGen::TwoBodyGen(Parameters const& config)
+  TwoBodyDecayGen::TwoBodyDecayGen(Parameters const& config)
     : EDProducer{config}
     , fMode         (selectOption(config().ParticleSelectionMode(), ParticleSelectionModeNames))
     , fPadOutVectors(config().PadOutVectors())
@@ -580,7 +580,7 @@ namespace evgen{
   
   
   //____________________________________________________________________________
-  void TwoBodyGen::setup()
+  void TwoBodyDecayGen::setup()
   {
     // do not put seed in reconfigure because we don't want to reset 
     // the seed midstream
@@ -642,7 +642,7 @@ namespace evgen{
     
 
     if(list.size() > 0)
-      throw cet::exception("TwoBodyGen") << "The "<< list 
+      throw cet::exception("TwoBodyDecayGen") << "The "<< list 
 					<< "\n vector(s) defined in the fhicl files has/have "
 					<< "a different size than the PDG vector "
 					<< "\n and it has (they have) more than one value, "
@@ -770,7 +770,7 @@ namespace evgen{
   }
 
   //____________________________________________________________________________
-  bool TwoBodyGen::PadVector(std::vector<double> &vec)
+  bool TwoBodyDecayGen::PadVector(std::vector<double> &vec)
   {
     // check if the vec has the same size as fPDG
     if( vec.size() != fPDG.size() ){
@@ -797,7 +797,7 @@ namespace evgen{
   }
 
   //____________________________________________________________________________
-  void TwoBodyGen::beginRun(art::Run& run)
+  void TwoBodyDecayGen::beginRun(art::Run& run)
   {
 
     // grab the geometry object to see what geometry we are using
@@ -810,7 +810,7 @@ namespace evgen{
   }
 
   //____________________________________________________________________________
-  void TwoBodyGen::produce(art::Event& evt)
+  void TwoBodyDecayGen::produce(art::Event& evt)
   {
 
     ///unique_ptr allows ownership to be transferred to the art::Event after the put statement
@@ -820,7 +820,7 @@ namespace evgen{
     truth.SetOrigin(simb::kSingleParticle);
     Sample(truth);
 
-    MF_LOG_DEBUG("TwoBodyGen") << truth;
+    MF_LOG_DEBUG("TwoBodyDecayGen") << truth;
 
     truthcol->push_back(truth);
 
@@ -832,7 +832,7 @@ namespace evgen{
   //____________________________________________________________________________
   // Draw the type, momentum and position of a single particle from the 
   // FCIHL description
-  void TwoBodyGen::SampleOne(unsigned int i, simb::MCTruth &mct){
+  void TwoBodyDecayGen::SampleOne(unsigned int i, simb::MCTruth &mct){
 
     CLHEP::RandFlat   flat(*fEngine);
     CLHEP::RandGaussQ gauss(*fEngine);
@@ -943,21 +943,9 @@ namespace evgen{
   // Draw the type, momentum and position for all particles from the 
   // FCIHL description.  Start positions will all match but momenta and angles drawn from
   // distributions defined in the fhicls
-	void TwoBodyGen::SampleMany(simb::MCTruth &mct){
+	void TwoBodyDecayGen::SampleMany(simb::MCTruth &mct){
 
 		bool fverbose = true;
-		if(fverbose){
-			std::cout<<"-------- Summary of Particles Kinematics ---------"<<std::endl;
-			std::cout<<std::setw(13)<<"px ";
-			std::cout<<std::setw(13)<<"py ";
-			std::cout<<std::setw(13)<<"pz ";
-			std::cout<<std::setw(11)<<"E ";
-			std::cout<<std::setw(7)<<"x ";
-			std::cout<<std::setw(7)<<"y ";
-			std::cout<<std::setw(7)<<"z ";
-			std::cout<<std::setw(7)<<"T ";
-			std::cout<<std::endl;
-		}
 
 		//CHECK, modify this one! 
 		CLHEP::RandFlat   flat(*fEngine);
@@ -1050,17 +1038,7 @@ namespace evgen{
 				p*std::cos(thxz*M_PI/180.0)*std::cos(thyz*M_PI/180.0),
 				std::sqrt(p*p+m*m));
 
-		if(fverbose){
-			std::cout<<std::setw(13)<<p0vec.Px();
-			std::cout<<std::setw(13)<<p0vec.Py();
-			std::cout<<std::setw(13)<<p0vec.Pz();
-			std::cout<<std::setw(11)<<p0vec.E();
-			std::cout<<std::setw(7)<<pos.X();
-			std::cout<<std::setw(7)<<pos.Y();
-			std::cout<<std::setw(7)<<pos.Z();
-			std::cout<<std::setw(7)<<pos.T();
-			std::cout<<std::endl;
-		}
+
 
 		//STEP2, daughter particles at rest frame
 
@@ -1081,14 +1059,14 @@ namespace evgen{
 			double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), M_PI/2.);
 			double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), -M_PI/2.);
 
-			std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
+//			std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
 
 			double sinthyzmin = std::sin(thyzradsminussigma);
 			double sinthyzmax = std::sin(thyzradsplussigma);
 			double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
 			Theta0YZEXT = (180. / M_PI) * std::asin(sinthyz);
 
-			if(fverbose) std::cout<<"Set Rest Frame angles XZ "<<Theta0XZEXT<<" YZ: "<<Theta0YZEXT<<std::endl;
+			if(fverbose) std::cout<<"At mother's rest frame daughter 1 angles XZ "<<Theta0XZEXT<<" YZ: "<<Theta0YZEXT<<std::endl;
 		}
 
 
@@ -1110,7 +1088,7 @@ namespace evgen{
 				p1*std::cos(Theta0XZEXT*M_PI/180.0)*std::cos(Theta0YZEXT*M_PI/180.0),
 				std::sqrt(p1*p1+dm1*dm1));
 
-		std::cout<<" Daughter stat : momentum (rest) "<< p1<<" px "<<p1vec.X()<<std::endl;
+//		std::cout<<" Daughter stat : momentum (rest) "<< p1<<" px "<<p1vec.X()<<std::endl;
 
 		// boost daughter 1 to the lab frame beta^2=1/((m/p^2+1))
 		p1vec.Boost( p0vec.X()/p0vec.E(),
@@ -1145,26 +1123,56 @@ namespace evgen{
 
 		//Print daughter's information
 		if(fverbose){
+			std::cout<<"------------- Summary of Particles Kinematics --------------"<<std::endl;
+			std::cout<<std::setw(12)<<"Part ";
+			std::cout<<std::setw(13)<<"px ";
+			std::cout<<std::setw(13)<<"py ";
+			std::cout<<std::setw(13)<<"pz ";
+			std::cout<<std::setw(11)<<"E ";
+			std::cout<<std::setw(9)<<"x ";
+			std::cout<<std::setw(9)<<"y ";
+			std::cout<<std::setw(9)<<"z ";
+			std::cout<<std::setw(9)<<"T ";
+			std::cout<<std::endl;
+
+			std::cout<<std::setw(12)<<"Mother";
+			std::cout<<std::setw(13)<<p0vec.Px();
+			std::cout<<std::setw(13)<<p0vec.Py();
+			std::cout<<std::setw(13)<<p0vec.Pz();
+			std::cout<<std::setw(11)<<p0vec.E();
+			std::cout<<std::setw(9)<<pos.X();
+			std::cout<<std::setw(9)<<pos.Y();
+			std::cout<<std::setw(9)<<pos.Z();
+			std::cout<<std::setw(9)<<pos.T();
+			std::cout<<std::endl;
+		
+			std::cout<<std::setw(12)<<"Daug. 1";
 			std::cout<<std::setw(13)<<p1vec.Px();
 			std::cout<<std::setw(13)<<p1vec.Py();
 			std::cout<<std::setw(13)<<p1vec.Pz();
 			std::cout<<std::setw(11)<<p1vec.E();
-			std::cout<<std::setw(7)<<pos.X();
-			std::cout<<std::setw(7)<<pos.Y();
-			std::cout<<std::setw(7)<<pos.Z();
-			std::cout<<std::setw(7)<<pos.T();
+			std::cout<<std::setw(9)<<p1vec.X();
+			std::cout<<std::setw(9)<<p1vec.Y();
+			std::cout<<std::setw(9)<<p1vec.Z();
+			std::cout<<std::setw(9)<<p1vec.T();
 			std::cout<<std::endl;
+
+			std::cout<<std::setw(12)<<"Daug. 2";
 			std::cout<<std::setw(13)<<p2vec.Px();
 			std::cout<<std::setw(13)<<p2vec.Py();
 			std::cout<<std::setw(13)<<p2vec.Pz();
 			std::cout<<std::setw(11)<<p2vec.E();
-			std::cout<<std::endl;
+			std::cout<<std::setw(9)<<p2vec.X();
+			std::cout<<std::setw(9)<<p2vec.Y();
+			std::cout<<std::setw(9)<<p2vec.Z();
+			std::cout<<std::setw(9)<<p2vec.T();
+			std::cout<<"\n"<<std::endl;
 		}
 	}
 
 
   //____________________________________________________________________________
-  void TwoBodyGen::Sample(simb::MCTruth &mct) 
+  void TwoBodyDecayGen::Sample(simb::MCTruth &mct) 
   {
 
     switch (fMode) {
@@ -1189,7 +1197,7 @@ namespace evgen{
       }
       break;
     default:
-      mf::LogWarning("UnrecognizeOption") << "TwoBodyGen does not recognize ParticleSelectionMode "
+      mf::LogWarning("UnrecognizeOption") << "TwoBodyDecayGen does not recognize ParticleSelectionMode "
 					  << fMode;
       break;
     } // switch on fMode
@@ -1198,10 +1206,10 @@ namespace evgen{
   }
 
   //____________________________________________________________________________
-  void TwoBodyGen::printVecs(std::vector<std::string> const& list)
+  void TwoBodyDecayGen::printVecs(std::vector<std::string> const& list)
   {
  
-    mf::LogInfo("TwoBodyGen") << " You are using vector values for TwoBodyGen configuration.\n   " 
+    mf::LogInfo("TwoBodyDecayGen") << " You are using vector values for TwoBodyDecayGen configuration.\n   " 
 			     << " Some of the configuration vectors may have been padded out ,"
 			     << " because they (weren't) as long as the pdg vector"
 			     << " in your configuration. \n"
@@ -1240,14 +1248,14 @@ namespace evgen{
 
     }// end loop over vector names in list
 
-    mf::LogInfo("TwoBodyGen") << values;
+    mf::LogInfo("TwoBodyDecayGen") << values;
 
     return;
   }
   
   
   //____________________________________________________________________________
-  double TwoBodyGen::SelectFromHist(const TH1& h) // select from a 1D histogram
+  double TwoBodyDecayGen::SelectFromHist(const TH1& h) // select from a 1D histogram
   {
     CLHEP::RandFlat   flat(*fEngine);
     
@@ -1262,7 +1270,7 @@ namespace evgen{
     return throw_value; // for some reason we've gone through all bins and failed?
   }
   //____________________________________________________________________________
-  void TwoBodyGen::SelectFromHist(const TH2& h, double &x, double &y) // select from a 2D histogram
+  void TwoBodyDecayGen::SelectFromHist(const TH2& h, double &x, double &y) // select from a 2D histogram
   {
     CLHEP::RandFlat   flat(*fEngine);
     
@@ -1287,7 +1295,7 @@ namespace evgen{
 
 namespace evgen{
 
-  DEFINE_ART_MODULE(TwoBodyGen)
+  DEFINE_ART_MODULE(TwoBodyDecayGen)
 
 }//end namespace evgen
 

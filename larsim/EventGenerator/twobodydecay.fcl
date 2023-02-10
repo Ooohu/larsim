@@ -5,7 +5,7 @@ BEGIN_PROLOG
 
 standard_twobodydecay:
 {
- module_type:           "TwoBodyGen"
+ module_type:           "TwoBodyDecayGen"
  ParticleSelectionMode: "all"       # 0 = use full list, 1 =  randomly select a single listed particle
  PadOutVectors:		false	    # false: require all vectors to be same length
                                     # true:  pad out if a vector is size one	
