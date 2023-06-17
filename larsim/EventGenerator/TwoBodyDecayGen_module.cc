@@ -1030,7 +1030,7 @@ namespace evgen{
 			double sinthyz = sinthyzmin + flat.fire() * (sinthyzmax - sinthyzmin);
 			thyz = (180. / M_PI) * std::asin(sinthyz);
 
-			if(fverbose) std::cout<<"Set angles XZ "<<thxz<<" YZ: "<<thyz<<std::endl;
+			if(fverbose) std::cout<<"Mother particle angles: XZ "<<thxz<<" YZ: "<<thyz<<" Momentum: "<<p<<" mass:" <<m<<std::endl;
 		}
 
 		TLorentzVector p0vec(p*std::cos(thyz*M_PI/180.0)*std::sin(thxz*M_PI/180.0),
@@ -1113,7 +1113,7 @@ namespace evgen{
 
 
 		simb::MCParticle part1(-1, fPDG[0], "primary");
-		part1.AddTrajectoryPoint(pos, p1vec);
+		part1.AddTrajectoryPoint(pos, p1vec);//use mother particle's location
 		mct.Add(part1);
 
 		simb::MCParticle part2(-1, fPDG[1], "primary");
@@ -1129,10 +1129,10 @@ namespace evgen{
 			std::cout<<std::setw(13)<<"py ";
 			std::cout<<std::setw(13)<<"pz ";
 			std::cout<<std::setw(11)<<"E ";
-			std::cout<<std::setw(9)<<"x ";
-			std::cout<<std::setw(9)<<"y ";
-			std::cout<<std::setw(9)<<"z ";
-			std::cout<<std::setw(9)<<"T ";
+			std::cout<<std::setw(11)<<"x ";
+			std::cout<<std::setw(11)<<"y ";
+			std::cout<<std::setw(11)<<"z ";
+			std::cout<<std::setw(11)<<"T ";
 			std::cout<<std::endl;
 
 			std::cout<<std::setw(12)<<"Mother";
@@ -1140,10 +1140,10 @@ namespace evgen{
 			std::cout<<std::setw(13)<<p0vec.Py();
 			std::cout<<std::setw(13)<<p0vec.Pz();
 			std::cout<<std::setw(11)<<p0vec.E();
-			std::cout<<std::setw(9)<<pos.X();
-			std::cout<<std::setw(9)<<pos.Y();
-			std::cout<<std::setw(9)<<pos.Z();
-			std::cout<<std::setw(9)<<pos.T();
+			std::cout<<std::setw(11)<<pos.X();
+			std::cout<<std::setw(11)<<pos.Y();
+			std::cout<<std::setw(11)<<pos.Z();
+			std::cout<<std::setw(11)<<pos.T();
 			std::cout<<std::endl;
 		
 			std::cout<<std::setw(12)<<"Daug. 1";
@@ -1151,10 +1151,6 @@ namespace evgen{
 			std::cout<<std::setw(13)<<p1vec.Py();
 			std::cout<<std::setw(13)<<p1vec.Pz();
 			std::cout<<std::setw(11)<<p1vec.E();
-			std::cout<<std::setw(9)<<p1vec.X();
-			std::cout<<std::setw(9)<<p1vec.Y();
-			std::cout<<std::setw(9)<<p1vec.Z();
-			std::cout<<std::setw(9)<<p1vec.T();
 			std::cout<<std::endl;
 
 			std::cout<<std::setw(12)<<"Daug. 2";
@@ -1162,10 +1158,6 @@ namespace evgen{
 			std::cout<<std::setw(13)<<p2vec.Py();
 			std::cout<<std::setw(13)<<p2vec.Pz();
 			std::cout<<std::setw(11)<<p2vec.E();
-			std::cout<<std::setw(9)<<p2vec.X();
-			std::cout<<std::setw(9)<<p2vec.Y();
-			std::cout<<std::setw(9)<<p2vec.Z();
-			std::cout<<std::setw(9)<<p2vec.T();
 			std::cout<<"\n"<<std::endl;
 		}
 	}

@@ -18,7 +18,7 @@ standard_twobodydecay:
  Y0:                    [ 0. ]      # in cm in world coordinates, ie y = 0 is at the center of the TPC   
  Z0:                    [ 20. ]     # in cm in world coordinates, ie z = 0 is at the upstream edge of    
                                     # the TPC and increases with the beam direction                      
- T0:                    [ 0. ]      # starting time
+ T0:                    [ 0. ]      # starting time, this should be set during the beamgate
  SigmaX:                [ 0. ]      # variation in the starting x position
  SigmaY:                [ 0. ]      # variation in the starting y position                            
  SigmaZ:                [ 0.0 ]     # variation in the starting z position                            
