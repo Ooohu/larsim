@@ -103,45 +103,53 @@ namespace evgen {
       fhicl::Sequence<double> P0{
         Name("P0"),
         Comment("central momentum (GeV/c) to generate"),
-        [this](){ return !fromHistogram(PDist()); }
+//        [this](){ return !fromHistogram(PDist()); }//remove this helps removing "Unsupported parameters" error
       };
 	  //CHECK
 	  fhicl::Atom<std::string> MotherMassDist{
 		  Name("MotherMassDist"),
 			  Comment("mother mass distribution type: " + presentOptions(DistributionNames)),
-			  optionName(kHIST, DistributionNames)};
+			  optionName(kHIST, DistributionNames)
+		};
 
 	  fhicl::Sequence<double> MotherMass{Name("MotherMass"),
 		  Comment("mother mass (GeV/c^2) to generate"),
-		  [this]() { return !fromHistogram(PDist()); }};
+//		  [this]() { return !fromHistogram(PDist()); }
+		};
 
 	  fhicl::Sequence<double> SigmaMotherMass{Name("SigmaMotherMass"),
 		  Comment("variation in mother mass (GeV/c^2)"),
-		  [this]() { return !fromHistogram(PDist()); }};
+//		  [this]() { return !fromHistogram(PDist()); }
+		};
 
 	  fhicl::Atom<std::string> AngEXTDist{
 		  Name("AngEXTDist"),
 			  Comment("angular distribution type: " + presentOptions(DistributionNames)),
-			  optionName(kHIST, DistributionNames)};
+			  optionName(kHIST, DistributionNames)
+		};
 
 	  fhicl::Sequence<double> Theta0XZEXT{Name("Theta0XZEXT"),
-		  Comment("Theta0XZEXT angle respected to mother particle momentum (degrees)")};
+		  Comment("Theta0XZEXT angle respected to mother particle momentum (degrees)")
+		};
 
 	  fhicl::Sequence<double> SigmaTheta0XZEXT{Name("SigmaTheta0XZEXT"),
-		  Comment("variation in beta angle (degrees)")};
+		  Comment("variation in beta angle (degrees)")
+		};
 
 	  fhicl::Sequence<double> Theta0YZEXT{Name("Theta0YZEXT"),
-		  Comment("Theta0YZEXT angle respected to mother particle momentum (degrees)")};
+		  Comment("Theta0YZEXT angle respected to mother particle momentum (degrees)")
+		};
 
 	  fhicl::Sequence<double> SigmaTheta0YZEXT{Name("SigmaTheta0YZEXT"),
-		  Comment("variation in beta angle (degrees)")};
+		  Comment("variation in beta angle (degrees)")
+		};
  //CHECK
 
 
       fhicl::Sequence<double> SigmaP{
         Name("SigmaP"),
         Comment("variation in momenta (GeV/c)"),
-        [this](){ return !fromHistogram(PDist()); }
+//        [this](){ return !fromHistogram(PDist()); }
       };
       
       fhicl::Sequence<double> X0{
@@ -229,13 +237,13 @@ namespace evgen {
       fhicl::Atom<std::string> HistogramFile{
         Name("HistogramFile"),
         Comment("ROOT file containing the required distributions for the generation"),
-        [this](){ return fromHistogram(AngleDist()) || fromHistogram(PDist()); }
+//        [this](){ return fromHistogram(AngleDist()) || fromHistogram(PDist()); }
       };
       
       fhicl::Sequence<std::string> PHist{
         Name("PHist"),
         Comment("name of the histograms of momentum distributions"),
-        [this](){ return fromHistogram(PDist()); }
+//        [this](){ return fromHistogram(PDist()); }
       };
       
       /*
@@ -245,11 +253,13 @@ namespace evgen {
         [this](){ return fromHistogram(AngleDist()); }
       };
       */
+	  /*
       fhicl::Sequence<std::string> ThetaXzYzHist{
         Name("ThetaXzYzHist"),
         Comment("name of the histograms of angular (X-Z and Y-Z) distribution"),
         [this](){ return fromHistogram(AngleDist()); }
       };
+	  */
       
       fhicl::OptionalAtom<rndm::NuRandomService::seed_t> Seed{
         Name("Seed"),
@@ -557,7 +567,7 @@ namespace evgen{
     , fHistFileName (config().HistogramFile())
     , fPHist        (config().PHist())
 //    , fThetaPhiHist (config().ThetaPhiHist())
-    , fThetaXzYzHist(config().ThetaXzYzHist())
+//    , fThetaXzYzHist(config().ThetaXzYzHist())
   {
     setup();
     
@@ -846,7 +856,7 @@ namespace evgen{
     else if (fPDist == kHIST){
       p = SelectFromHist(*(hPHist[i]));
     }
-    else{// if (fPDist == kUNIF) {
+    else if (fPDist == kUNIF){
       p = fP0[i] + fSigmaP[i]*(2.0*flat.fire()-1.0);
     }
 //    else {std::cout << "do not understand the value of PDist!";}
