@@ -999,6 +999,8 @@ namespace evgen{
 		else {
 			m = fMotherMass[0] + fSigmaMotherMass[0]*(2.0*flat.fire()-1.0);
 		}
+		//Need to correct p, which was taken as energy
+		p = sqrt(p*p - m*m); 
 
 
 		// Choose angles
