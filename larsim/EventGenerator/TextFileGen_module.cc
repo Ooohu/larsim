@@ -120,10 +120,9 @@
  *
  *===========================================================================
  */
-#include <string>
 #include <fstream>
-#include <sstream>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "art/Framework/Core/EDProducer.h"
@@ -131,18 +130,16 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/Run.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "fhiclcpp/ParameterSet.h"
 #include "cetlib_except/exception.h"
+#include "fhiclcpp/ParameterSet.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
 
 #include "TLorentzVector.h"
 
 #include "larcore/Geometry/Geometry.h"
 #include "larcoreobj/SummaryData/RunData.h"
-#include "nusimdata/SimulationBase/MCTruth.h"
 #include "nusimdata/SimulationBase/MCParticle.h"
-#include <curl/curl.h>
-#include <unistd.h>    // sleep
+#include "nusimdata/SimulationBase/MCTruth.h"
 
 namespace evgen {
   class TextFileGen;
@@ -150,108 +147,36 @@ namespace evgen {
 
 class evgen::TextFileGen : public art::EDProducer {
 public:
-  explicit TextFileGen(fhicl::ParameterSet const & p);
+  explicit TextFileGen(fhicl::ParameterSet const& p);
 
-  void produce(art::Event & e)                    override;
-  void beginJob()               		  override;
-  void beginRun(art::Run & run) 		  override;
-  void endJob()                                   override;
+  void produce(art::Event& e) override;
+  void beginJob() override;
+  void beginRun(art::Run& run) override;
 
 private:
-
-  static size_t curl_callback(char* p, size_t size, size_t nmemb, void* userdata);
   std::pair<unsigned, unsigned> readEventInfo(std::istream& is);
-  simb::MCTruth  readNextHepEvt(std::istream* is);
-  unsigned long int fOffset;     ///< Number of events to skip from input file.
-  std::ifstream* fInputFile;     ///< Input file stream.
-  std::string    fInputFileName; ///< Name of text file containing events to simulate
-  std::string    fInputURL;      ///< Input server url.
-  double         fTimeout;       ///< Maximum server cumulative timeout.
-  std::string    fCookieFile;    ///< Cookie file.
-  double fMoveY; ///< Project particles to a new y plane.
-  bool           fUseSSOAuth;    ///< SSO flag.
-  std::string    fCert;          ///< Certificate file name.
-  std::string    fKey;           ///< Private file name.
-  std::string    fCertType;      ///< Certificate file type.
-  std::string    fKeyType;       ///< Key file type.
-  std::string    fKeyPasswd;     ///< Key file password.
+  simb::MCTruth readNextHepEvt();
+  unsigned long int fOffset;
+  std::ifstream* fInputFile;
+  std::string fInputFileName; ///< Name of text file containing events to simulate
+  double fMoveY;              ///< Project particles to a new y plane.
 };
 
 //------------------------------------------------------------------------------
-evgen::TextFileGen::TextFileGen(fhicl::ParameterSet const & p)
+evgen::TextFileGen::TextFileGen(fhicl::ParameterSet const& p)
   : EDProducer{p}
-  , fOffset{p.get<unsigned long int>("Offset", 0)}
+  , fOffset{p.get<unsigned long int>("Offset")}
   , fInputFile(0)
-  , fInputFileName{p.get<std::string>("InputFileName", std::string())}
-  , fInputURL{p.get<std::string>("InputURL", std::string())}
-  , fTimeout{p.get<double>("Timeout", 7200.)}
+  , fInputFileName{p.get<std::string>("InputFileName")}
   , fMoveY{p.get<double>("MoveY", -1e9)}
-  , fUseSSOAuth{p.get<bool>("UseSSOAuth", false)}
-  , fCert{p.get<std::string>("Cert", std::string())}
-  , fKey{p.get<std::string>("Key", std::string())}
-  , fCertType{p.get<std::string>("CertType", std::string())}
-  , fKeyType{p.get<std::string>("KeyType", std::string())}
-  , fKeyPasswd{p.get<std::string>("KeyPasswd", std::string())}
 {
-  if (fMoveY>-1e8){
-    mf::LogWarning("TextFileGen")<<"Particles will be moved to a new plane y = "<<fMoveY<<" cm.\n";
+  if (fMoveY > -1e8) {
+    mf::LogWarning("TextFileGen") << "Particles will be moved to a new plane y = " << fMoveY
+                                  << " cm.\n";
   }
 
-  // Input should include one of InputFileName and InputURL, but not both.
-
-  if(fInputFileName.empty() && fInputURL.empty())
-    throw cet::exception("TextFileGen") << "No input specified.\n";
-  if(!fInputFileName.empty() && !fInputURL.empty()) 
-    throw cet::exception("TextFileGen") << "Input file and URL both specified.\n";
-
-  if(fUseSSOAuth) {
-
-    // Set the default value of fCert.
-
-    if(fCert.empty()) {
-      const char* vcert = getenv("X509_USER_CERT");
-      if(vcert != 0 && *vcert != 0)
-        fCert = std::string(vcert);
-      if(fCert.empty()) {
-        vcert = getenv("X509_USER_PROXY");
-        if(vcert != 0 && *vcert != 0)
-          fCert = std::string(vcert);
-      }
-      if(fCert.empty()) {
-        std::ostringstream ss;
-        ss << "/tmp/x509up_u" << getuid();
-        fCert = ss.str();
-      }
-    }
-
-    // Set the default value of fKey.
-
-    if(fKey.empty()) {
-      const char* vkey = getenv("X509_USER_KEY");
-      if(vkey != 0 && *vkey != 0)
-        fKey = std::string(vkey);
-      if(fKey.empty()) {
-        vkey = getenv("X509_USER_PROXY");
-        if(vkey != 0 && *vkey != 0)
-          fKey = std::string(vkey);
-      }
-      if(fKey.empty()) {
-        std::ostringstream ss;
-        ss << "/tmp/x509up_u" << getuid();
-        fKey = ss.str();
-      }
-    }
-  }
-
-  // If using server input, initialize libcurl.
-
-  if(!fInputURL.empty())
-    curl_global_init(CURL_GLOBAL_ALL);
-
-  produces< std::vector<simb::MCTruth>   >();
-  produces< sumdata::RunData, art::InRun >();
-
-
+  produces<std::vector<simb::MCTruth>>();
+  produces<sumdata::RunData, art::InRun>();
 }
 
 //------------------------------------------------------------------------------
@@ -260,324 +185,66 @@ void evgen::TextFileGen::beginJob()
   if(!fInputFileName.empty()) {
     fInputFile = new std::ifstream(fInputFileName.c_str());
 
-    // check that the file is a good one
-    if( !fInputFile->good() )
-      throw cet::exception("TextFileGen") << "input text file "
-                                          << fInputFileName
-                                          << " cannot be read.\n";
+  // check that the file is a good one
+  if (!fInputFile->good())
+    throw cet::exception("TextFileGen")
+      << "input text file " << fInputFileName << " cannot be read.\n";
 
-
-    for (unsigned i = 0; i != fOffset; ++i) {
-      auto const [eventNo, nparticles] = readEventInfo(*fInputFile);
-      for (unsigned p = 0; p != nparticles; ++p) {
-        constexpr auto all_chars_until = std::numeric_limits<unsigned>::max();
-        fInputFile->ignore(all_chars_until, '\n');
-      }
+  for (unsigned i = 0; i != fOffset; ++i) {
+    auto const [eventNo, nparticles] = readEventInfo(*fInputFile);
+    for (unsigned p = 0; p != nparticles; ++p) {
+      constexpr auto all_chars_until = std::numeric_limits<unsigned>::max();
+      fInputFile->ignore(all_chars_until, '\n');
     }
   }
-
-  // Maybe make cookie file.
-
-  if(fUseSSOAuth) {
-    char name[24];
-    strcpy(name, "/tmp/textfilegen.XXXXXX");
-    mkstemp(name);
-    fCookieFile = std::string(name);
-  }
-}
-
-//------------------------------------------------------------------------------
-void evgen::TextFileGen::endJob()
-{
-  // Maybe delete cookie file.
-
-  if(fUseSSOAuth)
-    unlink(fCookieFile.c_str());
 }
 
 //------------------------------------------------------------------------------
 void evgen::TextFileGen::beginRun(art::Run& run)
 {
-    art::ServiceHandle<geo::Geometry const> geo;
-    run.put(std::make_unique<sumdata::RunData>(geo->DetectorName()));
-  }
+  art::ServiceHandle<geo::Geometry const> geo;
+  run.put(std::make_unique<sumdata::RunData>(geo->DetectorName()), art::fullRun());
+}
 
 //------------------------------------------------------------------------------
-void evgen::TextFileGen::produce(art::Event & e)
+void evgen::TextFileGen::produce(art::Event& e)
 {
+  // check that the file is still good
+  if (!fInputFile->good())
+    throw cet::exception("TextFileGen")
+      << "input text file " << fInputFileName << " cannot be read in produce().\n";
+
   //Now, read the Event to be used.
 
+  // check that the file is still good
+  if (!fInputFile->good())
+    throw cet::exception("TextFileGen")
+      << "input text file " << fInputFileName << " cannot be read in produce().\n";
   auto truthcol = std::make_unique<std::vector<simb::MCTruth>>();
-
-  if(!fInputFileName.empty()) {
-
-    // Input from file.
-    // Check that the file is still good
-
-    if( !fInputFile->good() )
-      throw cet::exception("TextFileGen") << "input text file "
-                                          << fInputFileName
-                                          << " cannot be read in produce().\n";
-    truthcol->push_back(readNextHepEvt(fInputFile));
-  }
-  else if(!fInputURL.empty()) {
-
-    // Input from server.
-
-    int delay = 0;
-    double total_delay = 0.;
-    std::stringstream ss;
-
-    // Make curl handle and set global options.
-
-    char errorbuf[CURL_ERROR_SIZE];
-    errorbuf[0] = 0;
-    CURL* c = curl_easy_init();
-    curl_easy_setopt(c, CURLOPT_CAPATH, "/cvmfs/oasis.opensciencegrid.org/mis/certificates");
-    curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(c, CURLOPT_WRITEDATA, &ss);
-    curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, curl_callback);
-    curl_easy_setopt(c, CURLOPT_AUTOREFERER, 1);
-    curl_easy_setopt(c, CURLOPT_ERRORBUFFER, errorbuf);
-
-    // Retry loop.
-
-    for(;;) {
-
-      // Increasing delay period starts on second execution of retry loop.
-
-      if(delay > 0) {
-        if(total_delay > fTimeout && fTimeout > 0.)
-          throw cet::exception("TextFileGen") << "Exceeded maximum server cumulative timeout.\n";
-        mf::LogInfo("TextFileGen") << "Server unavailable, wait " << delay << " seconds.";
-        sleep(delay);
-        total_delay += delay;
-        delay *= 2;
-        if(delay > 120)
-          delay = 120;
-      }
-      else
-        delay = 10;
-
-      // Set url.
-
-      curl_easy_setopt(c, CURLOPT_URL, fInputURL.c_str());
-      curl_easy_setopt(c, CURLOPT_HTTPGET, 1);
-
-      // Set SSO options (if requested.)
-
-      if(fUseSSOAuth) {
-
-        // Set cert and key options.
-
-        curl_easy_setopt(c, CURLOPT_SSLCERT, fCert.c_str());
-        curl_easy_setopt(c, CURLOPT_SSLKEY, fKey.c_str());
-        if(!fCertType.empty())
-          curl_easy_setopt(c, CURLOPT_SSLCERTTYPE, fCertType.c_str());
-        if(!fKeyType.empty())
-          curl_easy_setopt(c, CURLOPT_SSLKEYTYPE, fKeyType.c_str());
-        if(!fKeyPasswd.empty())
-          curl_easy_setopt(c, CURLOPT_SSLKEYPASSWD, fKeyPasswd.c_str());
-
-        // Cookies.
-        // The cookie generated on the first call in a job will allow to
-        // bypass the follow-up request in subsequent calls in the same job.
-
-        curl_easy_setopt(c, CURLOPT_COOKIEFILE, fCookieFile.c_str());
-        curl_easy_setopt(c, CURLOPT_COOKIEJAR, fCookieFile.c_str());
-        curl_easy_setopt(c, CURLOPT_COOKIE, "pfidpaid=ad..CILogonForm");
-      }
-
-      // Read data.
-
-      CURLcode res = curl_easy_perform(c);
-      if(res != CURLE_OK) {
-        std::ostringstream ss;
-        ss << "Curl returned status " << res << " from url " << fInputURL << "\n"
-           << curl_easy_strerror(res) << "\n"
-           << errorbuf;
-        mf::LogError("TextFileGen") << ss.str();
-        throw cet::exception("TextFileGen") << ss.str() << "\n";
-      }
-
-      // Get http response code.
-      // Common codes:
-      // 200 - success.
-      // 404 - Not found.
-      // 503 - Service unavailable (temporarily).
-
-      long http_response = 0;
-      curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &http_response);
-      //std::cout << "http response = " << http_response << std::endl;
-
-      // Any response 5xx, retry.
-
-      if(http_response >= 500 && http_response < 600) {
-        ss = std::stringstream();
-        continue;
-      }
-
-      // At this point, if any repsonse except 200, throw exception.
-
-      if(http_response != 200) {
-        throw cet::exception("TextFileGen") << "Got http response code = " << http_response << " reading url " << fInputURL << "\n";
-      }
-
-      // Check content type.
-
-      char* ct;
-      curl_easy_getinfo(c, CURLINFO_CONTENT_TYPE, &ct);
-      std::string cts(ct);
-      cts.erase(cts.find(";"));
-      //std::cout << "Content type: " << cts << std::endl;
-
-      // If content type is text/plain, assume content is hepevt event.
-      // We are done.
-
-      if(cts == std::string("text/plain"))
-        break;
-
-      // If we requested SSO authentication, and we got back an html document,
-      // assume this is an SSO form, and we need a follow up request.
-      // Anything else is an error (throw exception).
-
-      if(!fUseSSOAuth || cts != std::string("text/html"))
-        throw cet::exception("TextFileGen") << "Unknown content type " << cts << "\n";
-
-      // Extract action url.
-
-      std::string doc = ss.str();
-      size_t n = doc.find("action=") + 8;
-      if(n == std::string::npos)
-        throw cet::exception("TextFileGen") << "No action using SSO.\n";
-      int m = doc.find("\"", n);
-      std::string action = doc.substr(n, m-n);
-      //std::cout << "action = " << action << std::endl;
-
-      // Extract SAMLResponse.
-
-      n = doc.find("name=\"SAMLResponse\"");
-      if(n == std::string::npos)
-        throw cet::exception("TextFileGen") << "No SAMLResponse using SSO.\n";
-      n = doc.find("value=", n) + 7;
-      m = doc.find("\"", n);
-      std::string saml = doc.substr(n, m-n);
-      char* cs = curl_easy_escape(c, saml.c_str(), 0);
-      std::string saml_urlencode = std::string(cs);
-      curl_free(cs);
-      //std::cout << "SAMLResponse = " << saml << std::endl;
-
-      // Extract RelayState.
-
-      n = doc.find("name=\"RelayState\"");
-      if(n == std::string::npos)
-        throw cet::exception("TextFileGen") << "No RelayState using SSO.\n";
-      n = doc.find("value=", n) + 7;
-      m = doc.find("\"", n);
-      std::string relay = doc.substr(n, m-n);
-      cs = curl_easy_escape(c, relay.c_str(), 0);
-      std::string relay_urlencode = std::string(cs);
-      curl_free(cs);
-      //std::cout << "RelayState= = " << relay << std::endl;
-
-      // Prepare to issue follow up request.
-
-      ss = std::stringstream();
-      curl_easy_setopt(c, CURLOPT_URL, action.c_str());
-
-      // Construct post data for follow up request.
-
-      std::stringstream postargs;
-      postargs << "RelayState=" << relay_urlencode << "&SAMLResponse=" << saml_urlencode;
-      //std::cout << "postargs = " << postargs.str() << std::endl;
-      curl_easy_setopt(c, CURLOPT_POST, 1);
-      std::string s = postargs.str();
-      curl_easy_setopt(c, CURLOPT_POSTFIELDS, s.c_str());
-
-      // Do request.
-
-      res = curl_easy_perform(c);
-      if(res != CURLE_OK) {
-        std::ostringstream ss;
-        ss << "Curl returned status " << res << " doing follow up request from url " << fInputURL << "\n"
-           << curl_easy_strerror(res) << "\n"
-           << errorbuf;
-        mf::LogError("TextFileGen") << ss.str();
-        throw cet::exception("TextFileGen") << ss.str() << "\n";
-      }
-
-      // Get http response code.
-
-      http_response = 0;
-      curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &http_response);
-
-      // Any response 5xx, retry.
-
-      if(http_response >= 500 && http_response < 600) {
-        ss = std::stringstream();
-        continue;
-      }
-
-      // Any response except 200, throw exception.
-
-      if(http_response != 200) {
-        throw cet::exception("TextFileGen") << "Got http response code = " << http_response << " reading url " << fInputURL << "\n";
-      }
-
-      // Check content type.
-
-      curl_easy_getinfo(c, CURLINFO_CONTENT_TYPE, &ct);
-      cts = std::string(ct);
-      cts.erase(cts.find(";"));
-      //std::cout << "Content type: " << cts << std::endl;
-
-      // Any content type except "text/plain," throw exception.
-
-      if(cts != std::string("text/plain"))
-        throw cet::exception("TextFileGen") << "Bad content type " << cts << "\n";
-
-      // Done (success).
-
-      break;
-
-    } // end of retry loop
-
-    // Cleanup curl handle.
-
-    curl_easy_cleanup(c);
-
-    // Process event data.
-    // If we exited the retry loop without throwing an exception, hepevt data is 
-    // contained in stringstream ss.
-
-    truthcol->push_back(readNextHepEvt(&ss));
-  }
+  truthcol->push_back(readNextHepEvt());
 
   e.put(std::move(truthcol));
 }
 
-
-
-
-simb::MCTruth evgen::TextFileGen::readNextHepEvt(std::istream* is)
+simb::MCTruth evgen::TextFileGen::readNextHepEvt()
 {
 
   // declare the variables for reading in the event record
-  int            status         = 0;
-  int 	 	 pdg            = 0;
-  int 	 	 firstMother    = 0;
-  int 	 	 secondMother   = 0;
-  int 	 	 firstDaughter  = 0;
-  int 	 	 secondDaughter = 0;
-  double 	 xMomentum      = 0.;
-  double 	 yMomentum   	= 0.;
-  double 	 zMomentum   	= 0.;
-  double 	 energy      	= 0.;
-  double 	 mass        	= 0.;
-  double 	 xPosition   	= 0.;
-  double 	 yPosition   	= 0.;
-  double 	 zPosition   	= 0.;
-  double 	 time        	= 0.;
+  int status = 0;
+  int pdg = 0;
+  int firstMother = 0;
+  int secondMother = 0;
+  int firstDaughter = 0;
+  int secondDaughter = 0;
+  double xMomentum = 0.;
+  double yMomentum = 0.;
+  double zMomentum = 0.;
+  double energy = 0.;
+  double mass = 0.;
+  double xPosition = 0.;
+  double yPosition = 0.;
+  double zPosition = 0.;
+  double time = 0.;
 
 
 
@@ -585,37 +252,33 @@ simb::MCTruth evgen::TextFileGen::readNextHepEvt(std::istream* is)
   std::string oneLine;
   std::istringstream inputLine;
   simb::MCTruth nextEvent;
-  auto const [eventNo, nParticles] = readEventInfo(*is);
-
-
+  auto const [eventNo, nParticles] = readEventInfo(*fInputFile);
 
   // now read in all the lines for the particles
   // in this interaction. only particles with
   // status = 1 get tracked in Geant4.
-  for(unsigned short i = 0; i < nParticles; ++i){
-    std::getline(*is, oneLine);
-    //std::cout << oneLine << std::endl;
+  for (unsigned short i = 0; i < nParticles; ++i) {
+    std::getline(*fInputFile, oneLine);
     inputLine.clear();
     inputLine.str(oneLine);
 
-    inputLine >> status      >> pdg
-	      >> firstMother >> secondMother >> firstDaughter >> secondDaughter
-	      >> xMomentum   >> yMomentum    >> zMomentum     >> energy >> mass
-	      >> xPosition   >> yPosition    >> zPosition     >> time;
+    inputLine >> status >> pdg >> firstMother >> secondMother >> firstDaughter >> secondDaughter >>
+      xMomentum >> yMomentum >> zMomentum >> energy >> mass >> xPosition >> yPosition >>
+      zPosition >> time;
 
 
 
     //Project the particle to a new y plane
-    if (fMoveY>-1e8){
-      double totmom = sqrt(pow(xMomentum,2)+pow(yMomentum,2)+pow(zMomentum,2));
-      double kx = xMomentum/totmom;
-      double ky = yMomentum/totmom;
-      double kz = zMomentum/totmom;
-      if (ky){
-	double l = (fMoveY-yPosition)/ky;
-	xPosition += kx*l;
-	yPosition += ky*l;
-	zPosition += kz*l;
+    if (fMoveY > -1e8) {
+      double totmom = sqrt(pow(xMomentum, 2) + pow(yMomentum, 2) + pow(zMomentum, 2));
+      double kx = xMomentum / totmom;
+      double ky = yMomentum / totmom;
+      double kz = zMomentum / totmom;
+      if (ky) {
+        double l = (fMoveY - yPosition) / ky;
+        xPosition += kx * l;
+        yPosition += ky * l;
+        zPosition += kz * l;
       }
     }
 
@@ -627,18 +290,15 @@ simb::MCTruth evgen::TextFileGen::readNextHepEvt(std::istream* is)
 
     nextEvent.Add(part);
 
-  }  //  end loop on particles.
+  } //  end loop on particles.
 
-return nextEvent;
+  return nextEvent;
 }
-
-
 
 std::pair<unsigned, unsigned> evgen::TextFileGen::readEventInfo(std::istream& iss)
 {
   std::string line;
   getline(iss, line);
-  //std::cout << line << std::endl;
   std::istringstream buffer{line};
 
   // Parse read line for the event number and particles per event

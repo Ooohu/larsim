@@ -11,164 +11,242 @@
 #ifndef CHEAT_BACKTRACKER_H
 #define CHEAT_BACKTRACKER_H
 
-//Includes
 #include <vector>
 
+#include "fhiclcpp/fwd.h"
+#include "fhiclcpp/types/Atom.h"
+
+#include "larcorealg/Geometry/fwd.h"
+#include "larcoreobj/SimpleTypesAndConstants/RawTypes.h"
+#include "larcoreobj/SimpleTypesAndConstants/geo_types.h"
+#include "lardataobj/RecoBase/Hit.h"
+#include "lardataobj/Simulation/SimChannel.h"
 #include "larsim/MCCheater/ParticleInventory.h"
 
-
-#include "fhiclcpp/types/Atom.h"
-#include "fhiclcpp/types/Table.h"
-
-#include "canvas/Persistency/Common/FindManyP.h"
-#include "larcorealg/Geometry/GeometryCore.h"
-#include "larcorealg/CoreUtils/ProviderPack.h"
-#include "lardataalg/DetectorInfo/DetectorClocks.h"
-#include "lardataobj/Simulation/SimChannel.h"
-#include "lardataobj/RecoBase/Hit.h"
-#include "lardataobj/RecoBase/SpacePoint.h"
-
-/*namespace recob{
+namespace detinfo {
+  class DetectorClocksData;
+}
+namespace recob {
   class SpacePoint;
-  }*/
+}
 
+namespace cheat {
 
-namespace cheat{
+  class BackTracker {
+  public:
+    // Structure for configuration parameters. (fhicl validation)
+    struct fhiclConfig {
+      fhicl::Atom<art::InputTag> G4ModuleLabel{
+        fhicl::Name("G4ModuleLabel"),
+        fhicl::Comment("The label of the LArG4   module used to produce the "
+                       "art file we will be using."),
+        "largeant"};
+      fhicl::Atom<art::InputTag> SimChannelModuleLabel{
+        fhicl::Name("SimChannelModuleLabel"),
+        fhicl::Comment("The label of the module containing the sim::SimChannel product."),
+        G4ModuleLabel()}; // -- D.R. label not required, if not provided
+                          // defaults to the value of G4ModuleLabel
+      fhicl::Atom<art::InputTag> DefaultHitModuleLabel{
+        fhicl::Name("DefaultHitModuleLabel"),
+        fhicl::Comment("The label  of the module used to produce the hits in the art file "
+                       "we will default to when no hitlist is provided."),
+        "hitfd"};
+      fhicl::Atom<double> MinHitEnergyFraction{
+        fhicl::Name("MinHitEnergyFraction"),
+        fhicl::Comment("The minimum     contribution an energy deposit must "
+                       "make to a Hit to be considered part of that hit."),
+        0.010};
+      fhicl::Atom<bool> OverrideRealData{
+        fhicl::Name("OverrideRealData"),
+        fhicl::Comment("Option when overlaying simulation on real data, to tell the "
+                       "backtracker to continue even if event looks like data."),
+        false};
+      fhicl::Atom<double> HitTimeRMS{fhicl::Name("HitTimeRMS"),
+                                     fhicl::Comment("The number of RMS units to move away"
+                                                    "From a Hit peak time for searching IDE."),
+                                     1.0};
+    };
 
-  class BackTracker{
-    public:
+    BackTracker(const fhiclConfig& config,
+                const cheat::ParticleInventory* partInv,
+                geo::GeometryCore const* geom,
+                geo::WireReadoutGeom const* wireReadoutGeom);
+    BackTracker(const fhicl::ParameterSet& pSet,
+                const cheat::ParticleInventory* partInv,
+                geo::GeometryCore const* geom,
+                geo::WireReadoutGeom const* wireReadoutGeom);
 
-      //Structure for configuration parameters. (fhicl validation)
-      struct fhiclConfig{
-        fhicl::Atom<art::InputTag> G4ModuleLabel{fhicl::Name("G4ModuleLabel"), fhicl::Comment("The label of the LArG4   module used to produce the art file we will be using."), "largeant"};
-        fhicl::Atom<art::InputTag> DefaultHitModuleLabel{fhicl::Name("DefaultHitModuleLabel"), fhicl::Comment("The label  of the module used to produce the hits in the art file we will default to when no hitlist is provided."), "hitfd"};
-        fhicl::Atom<double> MinHitEnergyFraction{fhicl::Name("MinHitEnergyFraction"), fhicl::Comment("The minimum     contribution an energy deposit must make to a Hit to be considered part of that hit."),0.010};
-	fhicl::Atom<bool> OverrideRealData{fhicl::Name("OverrideRealData"),fhicl::Comment("Option when overlaying simulation on real data, to tell the backtracker to continue even if event looks like data."),false};
-      };
+    // I may need to include this to delete copy of service providers.
+    BackTracker(BackTracker const&) = delete;
 
+    template <typename Evt>
+    void PrepEvent(const Evt& evt);
 
-      BackTracker(const fhiclConfig& config, 
-          const cheat::ParticleInventory* partInv, 
-          const geo::GeometryCore* geom, 
-          const detinfo::DetectorClocks* detClock );
-      BackTracker(const fhicl::ParameterSet& pSet, 
-          const cheat::ParticleInventory* partInv, 
-          const geo::GeometryCore* geom, 
-          const detinfo::DetectorClocks* detClock );
-      //I may need to include this to delete copy of service providers.
-      BackTracker(BackTracker const&) = delete;
+    template <typename Evt>
+    void PrepSimChannels(const Evt& evt);
 
-      template<typename Evt>
-        void PrepEvent ( const Evt& evt );
+    //-----------------------------------------------------
+    template <typename Evt>
+    bool CanRun(const Evt& evt)
+    {
+      return !evt.isRealData() || fOverrideRealData;
+    }
 
-      template<typename Evt>
-        void PrepSimChannels ( const Evt& evt );
+    //-----------------------------------------------------
+    template <typename Evt>
+    std::vector<art::Ptr<recob::Hit>> SpacePointToHits_Ps(art::Ptr<recob::SpacePoint> const& spt,
+                                                          const Evt& evt) const;
 
-//      template<typename Evt>
-//        void PrepAllHitList ( const Evt& evt);
+    //-----------------------------------------------------
+    template <typename Evt>
+    std::vector<double> SpacePointToXYZ(detinfo::DetectorClocksData const& clockData,
+                                        art::Ptr<recob::SpacePoint> const& spt,
+                                        const Evt& evt) const;
 
-      //-----------------------------------------------------
-      template<typename Evt>
-        bool CanRun(const Evt& evt){ return ( !(evt.isRealData()) || fOverrideRealData);}
+    //-----------------------------------------------------
+    void ClearEvent();
 
-      //-----------------------------------------------------
-      template<typename Evt>
-        const std::vector< art::Ptr< recob::Hit > > SpacePointToHits_Ps(art::Ptr< recob::SpacePoint> const& spt, const Evt& evt) const;
+    bool SimChannelsReady() const { return !fSimChannels.empty(); }
 
-      //-----------------------------------------------------
-      template<typename Evt>
-        const std::vector<  double > SpacePointToXYZ( art::Ptr< recob::SpacePoint > const& spt, const Evt& evt) const;
+    const std::vector<art::Ptr<sim::SimChannel>>& SimChannels() const { return fSimChannels; }
+    // All Hit List would go here. We explicitly choose not to include it, as the user
+    // should not be using backtracker to access Hits. This could change in a concievable
+    // future use case where we also allow the user to define what the "AllHitList" should
+    // be, though this would have ramifications on other functions.
 
+    std::vector<const sim::IDE*> TrackIdToSimIDEs_Ps(int const& id) const;
+    std::vector<const sim::IDE*> TrackIdToSimIDEs_Ps(int const& id, const geo::View_t view) const;
 
-      //-----------------------------------------------------
-      void ClearEvent();
+    /**
+     * @brief Returns the cached `sim::SimChannel` on the specified `channel`.
+     * @param channel ID of the TPC channel to find
+     * @return _art_ pointer to `sim::SimChannel`, or an null pointer if none
+     * @see FindSimChannel()
+     */
+    art::Ptr<sim::SimChannel> FindSimChannelPtr(raw::ChannelID_t channel) const;
 
+    /**
+     * @brief Returns the cached `sim::SimChannel` on the specified `channel`.
+     * @param channel ID of the TPC channel to find
+     * @return _art_ pointer to `sim::SimChannel`
+     * @throw cet::exception (category: `"BackTracker"`) if no `sim::SimChannel`
+     *                       for the requested  `channel` found
+     * @see FindSimChannelPtr()
+     */
+    art::Ptr<sim::SimChannel> FindSimChannel(raw::ChannelID_t channel) const;
 
-      bool SimChannelsReady() const { return !( fSimChannels.empty() ); }
-//      bool AllHitListReady () const { return !( fAllHitList.empty() ); }
+    std::vector<sim::TrackIDE> ChannelToTrackIDEs(detinfo::DetectorClocksData const& clockData,
+                                                  raw::ChannelID_t channel,
+                                                  const double hit_start_time,
+                                                  const double hit_end_time) const;
 
-      const std::vector<art::Ptr<sim::SimChannel>>& SimChannels() const { return fSimChannels; }
-      //All Hit List would go here. We explicitly choose not to include it, as the user should not be using backtracker to access Hits. This could change in a concievable future use case where we also allow the user to define what the "AllHitList" should be, though this would have ramifications on other functions.
+    // Track IDEs cannot be returned as pointers, as they dont exist in the data product,
+    // and we will not be storing them.
+    std::vector<sim::TrackIDE> HitToTrackIDEs(detinfo::DetectorClocksData const& clockData,
+                                              recob::Hit const& hit) const;
+    std::vector<sim::TrackIDE> HitToTrackIDEs(detinfo::DetectorClocksData const& clockData,
+                                              art::Ptr<recob::Hit> const& hit) const
+    {
+      return HitToTrackIDEs(clockData, *hit);
+    }
 
-      const std::vector<const sim::IDE* >   TrackIdToSimIDEs_Ps(int const& id) const;
-      //const std::vector<const sim::IDE>    TrackIdToSimIDEs (int const& id) const; 
-      const std::vector<const sim::IDE* >   TrackIdToSimIDEs_Ps(int const& id, const geo::View_t view) const; 
-      //std::vector<const sim::IDE>    TrackIdToSimIDEs (int const& id, const geo::View_t view) const; 
+    std::vector<int> HitToTrackIds(detinfo::DetectorClocksData const& clockData,
+                                   recob::Hit const& hit) const;
 
-      art::Ptr<sim::SimChannel> FindSimChannel( raw::ChannelID_t channel ) const;
+    std::vector<sim::TrackIDE> HitToEveTrackIDEs(detinfo::DetectorClocksData const& clockData,
+                                                 recob::Hit const& hit) const;
+    std::vector<sim::TrackIDE> HitToEveTrackIDEs(detinfo::DetectorClocksData const& clockData,
+                                                 art::Ptr<recob::Hit> const& hit) const
+    {
+      return HitToEveTrackIDEs(clockData, *hit);
+    }
 
-      const std::vector< sim::TrackIDE > ChannelToTrackIDEs(raw::ChannelID_t channel, const double hit_start_time, const double hit_end_time) const;
+    // I will not return these by copy, as that could get very large very quickly.
+    std::vector<art::Ptr<recob::Hit>> TrackIdToHits_Ps(
+      detinfo::DetectorClocksData const& clockData,
+      int tkId,
+      std::vector<art::Ptr<recob::Hit>> const& hitsIn) const;
 
+    std::vector<std::vector<art::Ptr<recob::Hit>>> TrackIdsToHits_Ps(
+      detinfo::DetectorClocksData const& clockData,
+      std::vector<int> const& tkIds,
+      std::vector<art::Ptr<recob::Hit>> const& hitsIn) const;
 
-      //Track IDEs cannot be returned as pointers, as they dont exist in the data product, and we will not be storing them.
-      const std::vector< sim::TrackIDE> HitToTrackIDEs(recob::Hit const& hit) const;
-      const std::vector< sim::TrackIDE> HitToTrackIDEs(art::Ptr<recob::Hit> const& hit) const { return this->HitToTrackIDEs(*hit);}
+    std::vector<sim::IDE> HitToAvgSimIDEs(detinfo::DetectorClocksData const& clockData,
+                                          recob::Hit const& hit) const;
+    std::vector<sim::IDE> HitToAvgSimIDEs(detinfo::DetectorClocksData const& clockData,
+                                          art::Ptr<recob::Hit> const& hit) const
+    {
+      return HitToAvgSimIDEs(clockData, *hit);
+    }
 
-      const std::vector< int > HitToTrackIds(recob::Hit const& hit) const ;
-      //   std::vector< const int> HitToTrackId(art::Ptr<recob::Hit> const& hit) { return this->HitToTrackId(*hit); }
+    std::vector<const sim::IDE*> HitToSimIDEs_Ps(detinfo::DetectorClocksData const& clockData,
+                                                 recob::Hit const& hit) const;
+    std::vector<const sim::IDE*> HitToSimIDEs_Ps(detinfo::DetectorClocksData const& clockData,
+                                                 art::Ptr<recob::Hit> const& hit) const
+    {
+      return HitToSimIDEs_Ps(clockData, *hit);
+    }
 
-      const std::vector<sim::TrackIDE> HitToEveTrackIDEs(recob::Hit const& hit) const;
-      const std::vector<sim::TrackIDE> HitToEveTrackIDEs(art::Ptr<recob::Hit> const& hit) const{ return this->HitToEveTrackIDEs(*hit);}
+    std::vector<double> SimIDEsToXYZ(std::vector<sim::IDE> const& ides) const;
+    std::vector<double> SimIDEsToXYZ(std::vector<const sim::IDE*> const& ide_Ps) const;
 
-      //I will not return these by copy, as that could get very large very quickly.
-      std::vector< art::Ptr<recob::Hit> > TrackIdToHits_Ps( const int& tkId, std::vector< art::Ptr< recob::Hit > > const& hitsIn ) const; 
-//I am not allowing this function for now, as caching the allhitlist indiscriminately is a catastrophically bad idea.
-//      std::vector< art::Ptr<recob::Hit> > TrackIdToHits_Ps( const int& tkId ) const
-//      {return this->TrackIdToHits_Ps(tkId, fAllHitList); }
+    std::vector<double> HitToXYZ(detinfo::DetectorClocksData const& clockData,
+                                 const recob::Hit& hit) const;
+    std::vector<double> HitToXYZ(detinfo::DetectorClocksData const& clockData,
+                                 art::Ptr<recob::Hit> const& hit) const
+    {
+      return HitToXYZ(clockData, *hit);
+    }
 
-      std::vector< std::vector< art::Ptr<recob::Hit> > > TrackIdsToHits_Ps( std::vector<int> const& tkIds, std::vector< art::Ptr< recob::Hit > > const& hitsIn ) const;
-//      std::vector< std::vector< art::Ptr<recob::Hit> > > TrackIdsToHits_Ps( std::vector<int> const& tkIds ) const
-//      {return this->TrackIdsToHits_Ps(tkIds, fAllHitList);}
+    double HitCollectionPurity(detinfo::DetectorClocksData const& clockData,
+                               std::set<int> const& trackIds,
+                               std::vector<art::Ptr<recob::Hit>> const& hits) const;
+    double HitChargeCollectionPurity(detinfo::DetectorClocksData const& clockData,
+                                     std::set<int> const& trackIds,
+                                     std::vector<art::Ptr<recob::Hit>> const& hits) const;
 
-      const std::vector< sim::IDE > HitToAvgSimIDEs ( recob::Hit const& hit) const;
-      const std::vector< sim::IDE > HitToAvgSimIDEs ( art::Ptr<recob::Hit> hit) const{ return this->HitToAvgSimIDEs(*hit);}
+    double HitCollectionEfficiency(detinfo::DetectorClocksData const& clockData,
+                                   std::set<int> const& trackIds,
+                                   std::vector<art::Ptr<recob::Hit>> const& hits,
+                                   std::vector<art::Ptr<recob::Hit>> const& allhits,
+                                   geo::View_t const& view) const;
 
-      const std::vector< const sim::IDE* > HitToSimIDEs_Ps (recob::Hit const& hit) const;
-      const std::vector< const sim::IDE* > HitToSimIDEs_Ps (art::Ptr< recob::Hit > const& hit) const { return this->HitToSimIDEs_Ps (*hit); }
+    double HitChargeCollectionEfficiency(detinfo::DetectorClocksData const& clockData,
+                                         std::set<int> const& trackIds,
+                                         std::vector<art::Ptr<recob::Hit>> const& hits,
+                                         std::vector<art::Ptr<recob::Hit>> const& allhits,
+                                         geo::View_t const& view) const;
 
-      //const std::vector< sim::IDE > HitToSimIDEs (recob::Hit const& hit);
-      //   std::vector< const sim::IDE > HitToSimIDEs (art::Ptr< recob::Hit > const& hit) { return this->HitToSimIDEsPs (*hit); }
+    std::set<int> GetSetOfTrackIds() const { return fPartInv->GetSetOfTrackIds(); }
+    std::set<int> GetSetOfEveIds() const { return fPartInv->GetSetOfEveIds(); }
 
-      const std::vector<double> SimIDEsToXYZ( std::vector< sim::IDE > const& ides) const;
-      const std::vector<double> SimIDEsToXYZ( std::vector< const sim::IDE* > const& ide_Ps) const;
+    std::set<int> GetSetOfTrackIds(detinfo::DetectorClocksData const& clockData,
+                                   std::vector<art::Ptr<recob::Hit>> const& hits) const;
+    std::set<int> GetSetOfEveIds(detinfo::DetectorClocksData const& clockData,
+                                 std::vector<art::Ptr<recob::Hit>> const& hits) const;
 
-      const std::vector<double> HitToXYZ(const recob::Hit& hit) const;
-      const std::vector<double> HitToXYZ(art::Ptr<recob::Hit> const& hit) const{ return this->HitToXYZ(*hit);}
+    std::vector<double> SpacePointHitsToWeightedXYZ(
+      detinfo::DetectorClocksData const& clockData,
+      std::vector<art::Ptr<recob::Hit>> const& hits) const;
 
+  private:
+    const cheat::ParticleInventory* fPartInv; // The constructor needs to put something in here
+    const geo::GeometryCore* fGeom;
+    const geo::WireReadoutGeom* fWireReadoutGeom;
+    const art::InputTag fG4ModuleLabel;
+    const art::InputTag fSimChannelModuleLabel;
+    const art::InputTag fHitLabel;
+    const double fMinHitEnergyFraction;
+    const bool fOverrideRealData;
+    const double fHitTimeRMS;
 
+    mutable std::vector<art::Ptr<sim::SimChannel>> fSimChannels;
 
-      const double HitCollectionPurity( std::set<int> const& trackIds, std::vector< art::Ptr<recob::Hit> > const& hits) const;
-      const double HitChargeCollectionPurity( std::set<int> const& trackIds, std::vector< art::Ptr<recob::Hit> > const& hits) const;
+  }; // end class BackTracker
 
-      const double HitCollectionEfficiency( std::set<int> const& trackIds, std::vector< art::Ptr<recob::Hit> > const& hits, std::vector< art::Ptr<recob::Hit> > const& allhits, geo::View_t const& view) const; 
-
-
-      const double HitChargeCollectionEfficiency( std::set<int> trackIds, std::vector< art::Ptr<recob::Hit> > const& hits,        std::vector< art::Ptr<recob::Hit> > const& allhits, geo::View_t const& view) const; 
-
-      const std::set<int> GetSetOfTrackIds() const { return fPartInv->GetSetOfTrackIds();}
-      const std::set<int> GetSetOfEveIds() const { return fPartInv->GetSetOfEveIds();}
-
-      const std::set<int> GetSetOfTrackIds( std::vector< art::Ptr< recob::Hit > > const& hits ) const;
-      const std::set<int> GetSetOfEveIds( std::vector< art::Ptr< recob::Hit > > const& hits ) const;
-
-      const std::vector<  double> SpacePointHitsToWeightedXYZ(std::vector<art::Ptr<recob::Hit>> const& hits) const;
-
-    private:
-      const cheat::ParticleInventory* fPartInv; //The constructor needs to put something in here
-      const geo::GeometryCore* fGeom;
-      const detinfo::DetectorClocks* fDetClocks;
-      const art::InputTag       fG4ModuleLabel;
-      const art::InputTag       fHitLabel;
-      const double              fMinHitEnergyFraction;
-      const bool                fOverrideRealData;
-
-      mutable std::vector<art::Ptr<sim::SimChannel>>       fSimChannels;
-//      mutable std::vector< art::Ptr<recob::Hit> >          fAllHitList;
-
-  };//end class BackTracker
-
-}//end namespace cheat
+} // end namespace cheat
 
 #include "BackTracker.tcc"
 
-#endif //CHEAT_BACKTRACKER_H
+#endif // CHEAT_BACKTRACKER_H

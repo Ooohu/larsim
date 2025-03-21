@@ -1,23 +1,30 @@
+cet_transitive_paths(FHICL_DIR BINARY IN_TREE)
+cet_test_env_prepend(FHICL_FILE_PATH ${TRANSITIVE_PATHS_WITH_FHICL_DIR})
+
+cet_transitive_paths(LIBRARY_DIR BINARY IN_TREE)
+cet_test_env_prepend(CET_PLUGIN_PATH ${TRANSITIVE_PATHS_WITH_LIBRARY_DIR})
+
+cet_transitive_paths(GDML_DIR BINARY IN_TREE)
+cet_test_env_prepend(FW_SEARCH_PATH ${TRANSITIVE_PATHS_WITH_GDML_DIR})
+
 #
 # Test GenerateEventTimestamp plug-in with SeedService's per-event policy,
 # or test SeedService's per-event policy with GenerateEventTimestamp plug-in.
 #
-simple_plugin( TestGeneratedEventTimestamp "module"
-  nutools_RandomUtils_NuRandomService_service
-  ${ART_FRAMEWORK_CORE}
-  ${ART_FRAMEWORK_PRINCIPAL}
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
-  art_Persistency_Provenance
-  canvas
-  ${MF_MESSAGELOGGER}
-  
-  ${FHICLCPP}
-  cetlib cetlib_except
-  ${CLHEP}
-  NO_INSTALL
+cet_build_plugin(TestGeneratedEventTimestamp art::EDAnalyzer NO_INSTALL
+  LIBRARIES PRIVATE
+  nurandom::RandomUtils_NuRandomService_service
+  art::Framework_Core
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  art::Framework_Services_Optional_RandomNumberGenerator_service
+  art::Persistency_Provenance
+  canvas::canvas
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  cetlib::cetlib
+  cetlib_except::cetlib_except
 )
-
 
 #
 # GeneratedEventTimestamp tests
@@ -64,6 +71,3 @@ cet_test(gensingle HANDBUILT
   DATAFILES gensingle_test.fcl
 )
 endif( mrb_build_dir )
-
-add_subdirectory(CRY)
-# add_subdirectory(GENIE)

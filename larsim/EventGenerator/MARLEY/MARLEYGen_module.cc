@@ -9,33 +9,28 @@
 // standard library includes
 #include <memory>
 #include <string>
-#include <vector>
 
 // framework includes
 #include "art/Framework/Core/EDProducer.h"
 #include "art/Framework/Core/ModuleMacros.h"
 #include "art/Framework/Principal/Event.h"
+#include "art/Framework/Principal/Run.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "art/Framework/Services/Optional/TFileService.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
-#include "fhiclcpp/ParameterSet.h"
+#include "art_root_io/TFileService.h"
 #include "fhiclcpp/types/Table.h"
-#include "cetlib_except/exception.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
 
 // art extensions
-#include "nutools/RandomUtils/NuRandomService.h"
+#include "nurandom/RandomUtils/NuRandomService.h"
 
 // LArSoft includes
 #include "larcore/Geometry/Geometry.h"
 #include "larcoreobj/SummaryData/RunData.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
-#include "nusimdata/SimulationBase/MCParticle.h"
-#include "larsim/EventGenerator/MARLEY/MARLEYHelper.h"
+
 #include "larsim/EventGenerator/MARLEY/ActiveVolumeVertexSampler.h"
+#include "larsim/EventGenerator/MARLEY/MARLEYHelper.h"
 
 // ROOT includes
-#include "TFile.h"
 #include "TTree.h"
 
 namespace evgen {
@@ -44,78 +39,77 @@ namespace evgen {
 
 class evgen::MarleyGen : public art::EDProducer {
 
-  public:
+public:
+  using Name = fhicl::Name;
+  using Comment = fhicl::Comment;
 
-    using Name = fhicl::Name;
-    using Comment = fhicl::Comment;
+  /// Ignore the marley_parameters FHiCL table during the validation
+  /// step (MARLEY will take care of that by itself)
+  struct KeysToIgnore {
+    std::set<std::string> operator()() { return {"marley_parameters"}; }
+  };
 
-    /// Collection of configuration parameters for the module
-    struct Config {
+  /// Collection of configuration parameters for the module
+  struct Config {
 
-      fhicl::Table<evgen::ActiveVolumeVertexSampler::Config> vertex_ {
-        Name("vertex"),
-        Comment("Configuration for selecting the vertex location(s)")
-      };
+    fhicl::Table<evgen::ActiveVolumeVertexSampler::Config> vertex_{
+      Name("vertex"),
+      Comment("Configuration for selecting the vertex location(s)")};
 
-      fhicl::Table<evgen::MARLEYHelper::Config> marley_parameters_ {
-        Name("marley_parameters"),
-        Comment("Configuration for the MARLEY generator")
-      };
+    fhicl::Atom<std::string> module_type_{
+      Name("module_type"),
+      Comment(""),
+      "MARLEYGen" // default value
+    };
 
-      fhicl::Atom<std::string> module_type_ {
-        Name("module_type"),
-        Comment(""),
-        "MARLEYGen" // default value
-      };
+  }; // struct Config
 
-    }; // struct Config
+  // Type to enable FHiCL parameter validation by art
+  using Parameters = art::EDProducer::Table<Config, KeysToIgnore>;
 
-    // Type to enable FHiCL parameter validation by art
-    using Parameters = art::EDProducer::Table<Config>;
+  // Configuration-checking constructors
+  explicit MarleyGen(const Parameters& p);
 
-    // Configuration-checking constructors
-    explicit MarleyGen(const Parameters& p);
+  virtual void produce(art::Event& e) override;
+  virtual void beginRun(art::Run& run) override;
 
-    virtual ~MarleyGen();
+  virtual void reconfigure(const Parameters& p);
 
-    virtual void produce(art::Event& e) override;
-    virtual void beginRun(art::Run& run) override;
+private:
+  // Object that provides an interface to the MARLEY event generator
+  std::unique_ptr<evgen::MARLEYHelper> fMarleyHelper;
 
-    virtual void reconfigure(const Parameters& p);
+  // Algorithm that allows us to sample vertex locations within the active
+  // volume(s) of the detector
+  std::unique_ptr<evgen::ActiveVolumeVertexSampler> fVertexSampler;
 
-  protected:
+  // unique_ptr to the current event created by MARLEY
+  std::unique_ptr<marley::Event> fEvent;
 
-    // Object that provides an interface to the MARLEY event generator
-    std::unique_ptr<evgen::MARLEYHelper> fMarleyHelper;
+  // the MARLEY event TTree
+  TTree* fEventTree;
 
-    // Algorithm that allows us to sample vertex locations within the active
-    // volume(s) of the detector
-    std::unique_ptr<evgen::ActiveVolumeVertexSampler> fVertexSampler;
-
-    // unique_ptr to the current event created by MARLEY
-    std::unique_ptr<marley::Event> fEvent;
-
-    // the MARLEY event TTree
-    TTree* fEventTree;
-
-    // Run, subrun, and event numbers from the art::Event being processed
-    uint_fast32_t fRunNumber;
-    uint_fast32_t fSubRunNumber;
-    uint_fast32_t fEventNumber;
+  // Run, subrun, and event numbers from the art::Event being processed
+  uint_fast32_t fRunNumber;
+  uint_fast32_t fSubRunNumber;
+  uint_fast32_t fEventNumber;
 };
 
 //------------------------------------------------------------------------------
 evgen::MarleyGen::MarleyGen(const Parameters& p)
-  : fEvent(new marley::Event), fRunNumber(0), fSubRunNumber(0), fEventNumber(0)
+  : EDProducer{p.get_PSet()}
+  , fEvent(new marley::Event)
+  , fRunNumber(0)
+  , fSubRunNumber(0)
+  , fEventNumber(0)
 {
   // Configure the module (including MARLEY itself) using the FHiCL parameters
   this->reconfigure(p);
 
   // Create a ROOT TTree using the TFileService that will store the MARLEY
   // event objects (useful for debugging purposes)
-  art::ServiceHandle<art::TFileService> tfs;
-  fEventTree = tfs->make<TTree>("MARLEY_event_tree",
-    "Neutrino events generated by MARLEY");
+  art::ServiceHandle<art::TFileService const> tfs;
+  fEventTree = tfs->make<TTree>("MARLEY_event_tree", "Neutrino events generated by MARLEY");
   fEventTree->Branch("event", "marley::Event", fEvent.get());
 
   // Add branches that give the art::Event run, subrun, and event numbers for
@@ -125,24 +119,15 @@ evgen::MarleyGen::MarleyGen(const Parameters& p)
   fEventTree->Branch("subrun_number", &fSubRunNumber, "subrun_number/i");
   fEventTree->Branch("event_number", &fEventNumber, "event_number/i");
 
-  produces< std::vector<simb::MCTruth>   >();
-  produces< sumdata::RunData, art::InRun >();
-}
-
-//------------------------------------------------------------------------------
-evgen::MarleyGen::~MarleyGen()
-{
+  produces<std::vector<simb::MCTruth>>();
+  produces<sumdata::RunData, art::InRun>();
 }
 
 //------------------------------------------------------------------------------
 void evgen::MarleyGen::beginRun(art::Run& run)
 {
-  // grab the geometry object to see what geometry we are using
-  art::ServiceHandle<geo::Geometry> geo;
-  std::unique_ptr<sumdata::RunData>
-    runcol(new sumdata::RunData(geo->DetectorName()));
-
-  run.put(std::move(runcol));
+  art::ServiceHandle<geo::Geometry const> geo;
+  run.put(std::make_unique<sumdata::RunData>(geo->DetectorName()), art::fullRun());
 }
 
 //------------------------------------------------------------------------------
@@ -153,17 +138,15 @@ void evgen::MarleyGen::produce(art::Event& e)
   fSubRunNumber = e.subRun();
   fEventNumber = e.event();
 
-  std::unique_ptr< std::vector<simb::MCTruth> >
-    truthcol(new std::vector<simb::MCTruth>);
+  std::unique_ptr<std::vector<simb::MCTruth>> truthcol(new std::vector<simb::MCTruth>);
 
   // Get the primary vertex location for this event
-  art::ServiceHandle<geo::Geometry> geo;
+  art::ServiceHandle<geo::Geometry const> geo;
   TLorentzVector vertex_pos = fVertexSampler->sample_vertex_pos(*geo);
 
   // Create the MCTruth object, and retrieve the marley::Event object
   // that was generated as it was created
-  simb::MCTruth truth = fMarleyHelper->create_MCTruth(vertex_pos,
-    fEvent.get());
+  simb::MCTruth truth = fMarleyHelper->create_MCTruth(vertex_pos, fEvent.get());
 
   // Write the marley::Event object to the event tree
   fEventTree->Fill();
@@ -177,7 +160,7 @@ void evgen::MarleyGen::produce(art::Event& e)
 void evgen::MarleyGen::reconfigure(const Parameters& p)
 {
   const auto& seed_service = art::ServiceHandle<rndm::NuRandomService>();
-  const auto& geom_service = art::ServiceHandle<geo::Geometry>();
+  const auto& geom_service = art::ServiceHandle<geo::Geometry const>();
 
   // Create a new evgen::ActiveVolumeVertexSampler object based on the current
   // configuration
@@ -185,8 +168,8 @@ void evgen::MarleyGen::reconfigure(const Parameters& p)
     p().vertex_, *seed_service, *geom_service, "MARLEY_Vertex_Sampler");
 
   // Create a new marley::Generator object based on the current configuration
-  fMarleyHelper = std::make_unique<MARLEYHelper>(p().marley_parameters_,
-    *seed_service, "MARLEY");
+  fhicl::ParameterSet marley_pset = p.get_PSet().get<fhicl::ParameterSet>("marley_parameters");
+  fMarleyHelper = std::make_unique<MARLEYHelper>(marley_pset, *seed_service, "MARLEY");
 }
 
 DEFINE_ART_MODULE(evgen::MarleyGen)

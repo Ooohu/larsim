@@ -7,72 +7,70 @@
  *
  * Description:
  * Alg to put properties of collection of MCTracks in a tree.
- * 
+ *
  */
+
+#include "lardataobj/MCBase/MCTrack.h"
 
 class TTree;
 
-namespace sim{
+#include <vector>
 
-  class MCTrack;
+namespace sim {
 
-  class MCTrackCollectionAnaAlg{
+  class MCTrackCollectionAnaAlg {
 
   public:
-
     MCTrackCollectionAnaAlg(){};
 
-    void SetOutputTree(TTree*, bool fill=true);
+    void SetOutputTree(TTree*, bool fill = true);
 
-    void FillTree(unsigned int, unsigned int,
-		  const std::vector<sim::MCTrack>&);
-    
+    void FillTree(unsigned int, unsigned int, const std::vector<sim::MCTrack>&);
+
   private:
-
     TTree* fTree;
-    bool   fFillTree;
+    bool fFillTree;
 
     unsigned int fRun;
     unsigned int fEvent;
 
     unsigned int fNMCTracks;
     unsigned int fDParticle;
-    float        fDParticleFraction;
+    float fDParticleFraction;
 
-    int          fDParticleOrigin;
-    int          fDParticlePdgCode;
+    int fDParticleOrigin;
+    int fDParticlePdgCode;
     unsigned int fDParticleTrackId;
-    float        fDParticleStartY;
-    float        fDParticleStartZ;
-    float        fDParticleStartX;
-    float        fDParticleStartE;
-    float        fDParticleEndY;
-    float        fDParticleEndZ;
-    float        fDParticleEndX;
-    float        fDParticleEndE;
-    int          fDParticleMotherPdgCode;
+    float fDParticleStartY;
+    float fDParticleStartZ;
+    float fDParticleStartX;
+    float fDParticleStartE;
+    float fDParticleEndY;
+    float fDParticleEndZ;
+    float fDParticleEndX;
+    float fDParticleEndE;
+    int fDParticleMotherPdgCode;
     unsigned int fDParticleMotherTrackId;
-    int          fDParticleAncestorPdgCode;
+    int fDParticleAncestorPdgCode;
     unsigned int fDParticleAncestorTrackId;
 
-    float        fCollectionY;
-    float        fCollectionZ;
-    float        fCollectionX;
-    float        fCollectionRMSY;
-    float        fCollectionRMSZ;
-    float        fCollectionRMSX;
-    float        fCollectionEnergy;
-    float        fMinX;
-    float        fMaxX;
-    float        fMinY;
-    float        fMaxY;
-    float        fMinZ;
-    float        fMaxZ;
+    float fCollectionY;
+    float fCollectionZ;
+    float fCollectionX;
+    float fCollectionRMSY;
+    float fCollectionRMSZ;
+    float fCollectionRMSX;
+    float fCollectionEnergy;
+    float fMinX;
+    float fMaxX;
+    float fMinY;
+    float fMaxY;
+    float fMinZ;
+    float fMaxZ;
 
-    void         FillDominantParticleInfo(const sim::MCTrack&);
-    
+    void FillDominantParticleInfo(const sim::MCTrack&);
   };
-  
+
 }
 
 #endif

@@ -1,172 +1,151 @@
-cet_make_library(
-  LIBRARY_NAME larsim_MCCheater_ParticleInventory
-  SOURCE ParticleInventory.cc ParticleInventory.tcc
+cet_make_library(LIBRARY_NAME larsim_MCCheater_ParticleInventory
+  SOURCE ParticleInventory.cc
   LIBRARIES
-  canvas
-  lardata_Utilities
-  larsim_Simulation 
-  nutools_ParticleNavigation 
-  lardataobj_Simulation
-  nusimdata_SimulationBase
-  ) 
+  PUBLIC
+  lardataobj::Simulation
+  nug4::ParticleNavigation
+  nusimdata::SimulationBase
+  canvas::canvas
+  fhiclcpp::types
+  PRIVATE
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+)
 
-cet_make_library(
-  LIBRARY_NAME larsim_MCCheater_PhotonBackTracker
-  SOURCE PhotonBackTracker.cc PhotonBackTracker.tcc
+cet_make_library(LIBRARY_NAME larsim_MCCheater_PhotonBackTracker
+  SOURCE PhotonBackTracker.cc
   LIBRARIES
-  canvas
-  lardata_Utilities
-  larsim_Simulation 
-  larsim_MCCheater_ParticleInventory
-  larcorealg_Geometry
-  nutools_ParticleNavigation 
-  lardataobj_Simulation
-  lardataobj_RawData
-  nusimdata_SimulationBase
-  ) 
+  PUBLIC
+  larcoreobj::SimpleTypesAndConstants
+  lardataobj::RecoBase
+  lardataobj::Simulation
+  art::Framework_Principal
+  messagefacility::MF_MessageLogger
+  canvas::canvas
+  fhiclcpp::types
+  PRIVATE
+  larsim::MCCheater_ParticleInventory
+  larcorealg::Geometry
+)
 
-cet_make_library(
-  LIBRARY_NAME larsim_MCCheater_BackTracker
-  SOURCE BackTracker.cc BackTracker.tcc
+cet_make_library(LIBRARY_NAME larsim_MCCheater_BackTracker
+  SOURCE BackTracker.cc
   LIBRARIES
-  canvas
-  lardata_Utilities
-  larsim_Simulation 
-  larsim_MCCheater_ParticleInventory
-  larcorealg_Geometry
-  nutools_ParticleNavigation 
-  lardataobj_Simulation
-  nusimdata_SimulationBase
-  ) 
+  PUBLIC
+  larsim::MCCheater_ParticleInventory
+  larcoreobj::SimpleTypesAndConstants
+  lardataobj::RecoBase
+  lardataobj::Simulation
+  canvas::canvas
+  fhiclcpp::types
+  PRIVATE
+  larcorealg::Geometry
+  lardataalg::DetectorInfo
+)
 
-simple_plugin(ParticleInventoryService "service"
-  larsim_MCCheater_ParticleInventory
-  larsim_Simulation 
-  lardata_Utilities
-  nutools_ParticleNavigation 
-  lardataobj_Simulation
-  nusimdata_SimulationBase
-  ${ART_FRAMEWORK_CORE}
-  ${ART_FRAMEWORK_PRINCIPAL}
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-  art_Persistency_Common
-  art_Persistency_Provenance
-  art_Utilities
-  canvas
-  ${MF_MESSAGELOGGER}
-  
-  ${FHICLCPP}
-  cetlib cetlib_except
-  ${ROOT_BASIC_LIB_LIST}
-  )
+cet_build_plugin(ParticleInventoryService art::service
+  LIBRARIES
+  PUBLIC
+  larsim::MCCheater_ParticleInventory
+  nusimdata::SimulationBase
+  art::Persistency_Provenance
+  fhiclcpp::types
+  PRIVATE
+  nug4::ParticleNavigation
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+)
 
-simple_plugin(PhotonBackTrackerService "service"
-  larsim_MCCheater_PhotonBackTracker
-  larsim_MCCheater_ParticleInventory
-  larsim_MCCheater_ParticleInventoryService_service
-  lardata_Utilities
-  larsim_Simulation 
-  nutools_ParticleNavigation 
-  lardataobj_Simulation
-  lardataobj_RecoBase
-  lardataobj_RawData
-  larcorealg_Geometry
-  larcore_Geometry_Geometry_service
-  nusimdata_SimulationBase
-  ${ART_FRAMEWORK_CORE}
-  ${ART_FRAMEWORK_PRINCIPAL}
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-  art_Persistency_Common
-  art_Persistency_Provenance
-  art_Utilities
-  canvas
-  ${MF_MESSAGELOGGER}
-  ${FHICLCPP}
-  cetlib cetlib_except
-  ${ROOT_BASIC_LIB_LIST}
-  )
+cet_build_plugin(PhotonBackTrackerService art::service
+  LIBRARIES
+  PUBLIC
+  larsim::MCCheater_PhotonBackTracker
+  larcoreobj::SimpleTypesAndConstants
+  lardataobj::RecoBase
+  lardataobj::Simulation
+  art::Persistency_Provenance
+  canvas::canvas
+  fhiclcpp::types
+  PRIVATE
+  larsim::MCCheater_ParticleInventoryService_service
+  larsim::MCCheater_ParticleInventory
+  larcore::ServiceUtil
+  larcorealg::Geometry
+  art::Framework_Principal
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+)
 
-simple_plugin(BackTrackerService "service"
-  larsim_MCCheater_BackTracker
-  larsim_MCCheater_ParticleInventory
-  larsim_MCCheater_ParticleInventoryService_service
-  lardata_Utilities
-  larsim_Simulation 
-  nutools_ParticleNavigation 
-  lardataobj_Simulation
-  lardataobj_RecoBase
-  larcorealg_Geometry
-  larcore_Geometry_Geometry_service
-  nusimdata_SimulationBase
-  ${ART_FRAMEWORK_CORE}
-  ${ART_FRAMEWORK_PRINCIPAL}
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-  art_Persistency_Common
-  art_Persistency_Provenance
-  art_Utilities
-  canvas
-  ${MF_MESSAGELOGGER}
-  
-  ${FHICLCPP}
-  cetlib cetlib_except
-  ${ROOT_BASIC_LIB_LIST}
-  )
+cet_build_plugin(BackTrackerService art::service
+  LIBRARIES
+  PUBLIC
+  larsim::MCCheater_BackTracker
+  larcore::ServiceUtil
+  lardataobj::RecoBase
+  lardataobj::Simulation
+  art::Persistency_Provenance
+  canvas::canvas
+  fhiclcpp::types
+  PRIVATE
+  larsim::MCCheater_ParticleInventoryService_service
+  larsim::MCCheater_ParticleInventory
+  lardata::DetectorClocksService
+  art::Framework_Principal
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+)
 
-simple_plugin(CheckBackTracking "module"
-  larsim_MCCheater_BackTrackerService_service
-  larsim_MCCheater_ParticleInventoryService_service
-  lardataobj_RecoBase
-  larsim_Simulation nutools_ParticleNavigation lardataobj_Simulation
-  ${MF_MESSAGELOGGER}
-  ${ART_FRAMEWORK_CORE}
-  ${ART_FRAMEWORK_PRINCIPAL}
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-  ${MF_MESSAGELOGGER}
-  
-  ${FHICLCPP}
-  cetlib cetlib_except
+cet_build_plugin(CheckBackTracking art::EDAnalyzer
+  LIBRARIES PRIVATE
+  larsim::MCCheater_BackTrackerService_service
+  larsim::MCCheater_ParticleInventoryService_service
+  lardata::DetectorClocksService
+  larcoreobj::SimpleTypesAndConstants
+  lardataobj::RecoBase
+  nug4::ParticleNavigation
+  art::Framework_Services_Registry
+  art::Framework_Principal
+  messagefacility::MF_MessageLogger
+  canvas::canvas
+)
 
-  )
+cet_build_plugin(RecoCheckAna art::EDAnalyzer
+  LIBRARIES PRIVATE
+  larsim::MCCheater_BackTrackerService_service
+  larsim::MCCheater_ParticleInventoryService_service
+  lardata::DetectorClocksService
+  larcoreobj::SimpleTypesAndConstants
+  lardataobj::RecoBase
+  lardataobj::Simulation
+  nug4::ParticleNavigation
+  nusimdata::SimulationBase
+  art_root_io::TFileService_service
+  art_root_io::tfile_support
+  art::Framework_Services_Registry
+  art::Framework_Principal
+  messagefacility::MF_MessageLogger
+  canvas::canvas
+  messagefacility::MF_MessageLogger
+  ROOT::Core
+  ROOT::Hist
+  ROOT::Tree
+)
 
-simple_plugin(RecoCheckAna "module"
-  larsim_MCCheater_BackTrackerService_service
-  larsim_MCCheater_ParticleInventoryService_service
-  lardataobj_RecoBase
-  larsim_Simulation nutools_ParticleNavigation lardataobj_Simulation
-  nusimdata_SimulationBase
-  ${MF_MESSAGELOGGER}
-  ${ART_FRAMEWORK_CORE}
-  ${ART_FRAMEWORK_PRINCIPAL}
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-  ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-  art_Persistency_Common
-  art_Persistency_Provenance
-  art_Utilities
-  canvas
-  ${MF_MESSAGELOGGER}
-  
-  ${FHICLCPP}
-  cetlib cetlib_except
-  ${ROOT_BASIC_LIB_LIST}
+cet_build_plugin(BackTrackerLoader art::EDProducer
+  LIBRARIES PRIVATE
+  larsim::MCCheater_BackTrackerService_service
+  larsim::MCCheater_ParticleInventoryService_service
+  art::Framework_Services_Registry
+)
 
-  )
-
-simple_plugin(BackTrackerLoader "module"
-  larsim_MCCheater_BackTrackerService_service
-  larsim_MCCheater_ParticleInventoryService_service
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}              
-  )
-simple_plugin(PhotonBackTrackerLoader "module"
-  larsim_MCCheater_ParticleInventoryService_service
-  larsim_MCCheater_PhotonBackTrackerService_service
-  ${ART_FRAMEWORK_SERVICES_REGISTRY}              
-  )
-
+cet_build_plugin(PhotonBackTrackerLoader art::EDProducer
+  LIBRARIES PRIVATE
+  larsim::MCCheater_ParticleInventoryService_service
+  larsim::MCCheater_PhotonBackTrackerService_service
+  art::Framework_Services_Registry
+)
 
 install_headers()
 install_fhicl()

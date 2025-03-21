@@ -2,37 +2,21 @@
 #define MCSHOWERRECOPART_H
 
 // ART includes
-#include "fhiclcpp/ParameterSet.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
-#include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "art/Framework/Services/Registry/ServiceMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
-#include "art/Framework/Principal/Event.h"
-#include "art/Framework/Principal/Handle.h"
-#include "canvas/Persistency/Common/FindManyP.h"
-#include "canvas/Persistency/Common/Ptr.h"
-#include "canvas/Persistency/Common/PtrVector.h"
+namespace fhicl {
+  class ParameterSet;
+}
+#include "cetlib_except/exception.h"
 
 // LArSoft
-#include "nusimdata/SimulationBase/MCTruth.h"
-#include "nusimdata/SimulationBase/MCParticle.h"
-#include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
-#include "lardata/DetectorInfoServices/LArPropertiesService.h"
-#include "larcore/Geometry/Geometry.h"
-#include "MCRecoPart.h"
+namespace sim {
+  class MCRecoPart;
+}
 
 // STL
-#include <set>
+#include <map>
 #include <vector>
-#include <sstream>
 
-// ROOT
-#include <TString.h>
-#include <TTree.h>
-
-namespace sim
-{
+namespace sim {
 
   class MCShowerRecoPart {
 
@@ -41,7 +25,6 @@ namespace sim
     static const int kINVALID_INT;
 
   public:
-
     /// Default constructor with fhicl parameters
     explicit MCShowerRecoPart(fhicl::ParameterSet const& pset);
     //ClusterMergeAlg(fhicl::ParameterSet const& pset, art::ActivityRegistry& reg);
@@ -50,12 +33,13 @@ namespace sim
     void ConstructShower(const MCRecoPart& part_v);
 
     /**
-       Returns a list ot daughter particle index numbers for the specified shower 
+       Returns a list ot daughter particle index numbers for the specified shower
        with the shower index number as an input
      */
     const std::vector<unsigned int>& ShowerDaughters(const unsigned int shower_id) const
     {
-      if(shower_id >= _shower_daughters.size()) throw cet::exception(__FUNCTION__) << "Invalid shower index!";
+      if (shower_id >= _shower_daughters.size())
+        throw cet::exception(__FUNCTION__) << "Invalid shower index!";
       return _shower_daughters.at(shower_id);
     }
 
@@ -64,9 +48,10 @@ namespace sim
     */
     const std::vector<unsigned int> ShowerMothers() const
     {
-      std::vector<unsigned int> mothers(_shower_index.size(),0);
-      for(auto mother_iter = _shower_index.begin(); mother_iter!=_shower_index.end(); ++mother_iter)
-	mothers.at((*mother_iter).second) = (*mother_iter).first;
+      std::vector<unsigned int> mothers(_shower_index.size(), 0);
+      for (auto mother_iter = _shower_index.begin(); mother_iter != _shower_index.end();
+           ++mother_iter)
+        mothers.at((*mother_iter).second) = (*mother_iter).first;
       return mothers;
     }
 
@@ -78,12 +63,11 @@ namespace sim
     */
     int ShowerIndex(const unsigned int part_index) const
     {
-      if(_shower_id.size() <= part_index) return kINVALID_INT;
+      if (_shower_id.size() <= part_index) return kINVALID_INT;
       return _shower_id.at(part_index);
     }
 
   protected:
-
     /// lots of stdout stream
     bool _debug_mode;
 
@@ -97,9 +81,9 @@ namespace sim
     std::map<unsigned int, unsigned int> _shower_index;
 
     /// Shower time-ordered daughters
-    std::vector<std::vector<unsigned int> > _shower_daughters;
+    std::vector<std::vector<unsigned int>> _shower_daughters;
 
   }; // class MCShowerRecoPart
-  
+
 } //namespace cluster
 #endif

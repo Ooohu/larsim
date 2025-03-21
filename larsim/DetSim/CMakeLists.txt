@@ -1,102 +1,47 @@
-art_make( NO_PLUGINS
-          
-          LIB_LIBRARIES larevt_Filters
-                        lardataobj_RawData
-                        larcorealg_Geometry
-                        larcore_Geometry_Geometry_service
-                        ${ART_FRAMEWORK_CORE}
-                        ${ART_FRAMEWORK_PRINCIPAL}
-                        ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                        art_Persistency_Common
-                        art_Persistency_Provenance
-                        art_Utilities
-                        canvas
-                        ${MF_MESSAGELOGGER}
-                        
-                        ${FHICLCPP}
-                        cetlib cetlib_except
-                        ${ROOT_BASIC_LIB_LIST}
-         )
-
-
-simple_plugin(SimWireAna "module"
-                         lardataobj_RawData
-                         ${ART_FRAMEWORK_CORE}
-                         ${ART_FRAMEWORK_PRINCIPAL}
-                         ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                         ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                         ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                         art_Persistency_Common
-                         art_Persistency_Provenance
-                         art_Utilities
-                         canvas
-                         ${MF_MESSAGELOGGER}
-                         
-                         ${FHICLCPP}
-                         cetlib cetlib_except
-                         ${ROOT_BASIC_LIB_LIST}
-              
+cet_build_plugin(SimWireAna art::EDAnalyzer
+  LIBRARIES PRIVATE
+  lardataobj::RawData
+  art_root_io::TFileService_service
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  canvas::canvas
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  ROOT::Hist
 )
 
-simple_plugin(SimWire "module"
-                      larsim_Simulation lardataobj_Simulation
-                      lardataobj_RawData
-                      larcorealg_Geometry
-                      larcore_Geometry_Geometry_service
-                      lardata_Utilities_LArFFT_service
-                      lardata_Utilities
-                      nutools_RandomUtils_NuRandomService_service
-                      ${ART_FRAMEWORK_CORE}
-                      ${ART_FRAMEWORK_PRINCIPAL}
-                      ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                      ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                      ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                      ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
-                      art_Persistency_Common
-                      art_Persistency_Provenance
-                      art_Utilities
-                      canvas
-                      ${MF_MESSAGELOGGER}
-                      
-                      ${FHICLCPP}
-                      cetlib cetlib_except
-                      ${CLHEP}
-                      ${ROOT_GEOM}
-                      ${ROOT_BASIC_LIB_LIST}
+cet_build_plugin(SimWire art::EDProducer
+  LIBRARIES PRIVATE
+  larcore::Geometry_Geometry_service
+  lardata::DetectorClocksService
+  lardata::Utilities_LArFFT_service
+  larcorealg::Geometry
+  lardataalg::DetectorInfo
+  lardataobj::RawData
+  lardataobj::Simulation
+  nurandom::RandomUtils_NuRandomService_service
+  art::Framework_Services_Registry
+  art_root_io::TFileService_service
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  cetlib_except::cetlib_except
+  CLHEP::Random
+  ROOT::MathCore
 )
 
-
-simple_plugin(WienerFilterAna "module"
-                              lardataobj_RawData
-                              larcorealg_Geometry
-                              larcore_Geometry_Geometry_service
-                              ${ART_FRAMEWORK_CORE}
-                              ${ART_FRAMEWORK_PRINCIPAL}
-                              ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                              ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                              ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                              art_Persistency_Common
-                              art_Persistency_Provenance
-                              art_Utilities
-                              canvas
-                              ${MF_MESSAGELOGGER}
-                              
-                              ${FHICLCPP}
-                              cetlib cetlib_except
-                              ${ROOT_BASIC_LIB_LIST}
-              
-)
-
-simple_plugin(RecompressRawDigits "module"
-                lardataobj_RawData
-                ${ART_FRAMEWORK_CORE}
-                ${ART_FRAMEWORK_PRINCIPAL}
-                ${MF_MESSAGELOGGER}
-                art_Persistency_Provenance
-                ${FHICLCPP}
-                cetlib cetlib_except
+cet_build_plugin(WienerFilterAna art::EDAnalyzer
+  LIBRARIES PRIVATE
+  lardata::DetectorClocksService
+  lardata::Utilities_LArFFT_service
+  larcore::Geometry_Geometry_service
+  lardata::Utilities_LArFFT_service
+  lardataalg::DetectorInfo
+  lardataobj::RawData
+  art_root_io::TFileService_service
+  art::Framework_Services_Registry
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  ROOT::Hist
 )
 
 install_headers()

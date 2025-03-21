@@ -1,7 +1,7 @@
 /**
  * \file WeightManager.h
  *
- * 
+ *
  * \brief Allows to interface to EventWeight calculators
  *
  * @author Marco Del Tutto <marco.deltutto@physics.ox.ac.uk>
@@ -10,45 +10,29 @@
 #ifndef WEIGHTMANAGER_H
 #define WEIGHTMANAGER_H
 
-#include "art/Framework/Principal/Event.h"
-#include "art/Framework/Principal/Handle.h"
-#include "art/Framework/Principal/Run.h"
-#include "art/Framework/Principal/SubRun.h"
-#include "art/Framework/Principal/Handle.h"
+#include "art/Framework/Principal/fwd.h"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "art/Framework/Services/Registry/ActivityRegistry.h"
-#include "art/Framework/Services/Registry/ServiceMacros.h"
-#include "art/Framework/Services/Optional/RandomNumberGenerator.h"
-#include "canvas/Utilities/InputTag.h"
-#include "nutools/RandomUtils/NuRandomService.h"
-#include "lardataobj/Simulation/sim.h"
-#include "canvas/Persistency/Common/Assns.h"
 #include "fhiclcpp/ParameterSet.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
+#include "lardataobj/Simulation/sim.h"
+#include "nurandom/RandomUtils/NuRandomService.h"
 
-#include "Weight_t.h"
 #include "MCEventWeight.h"
 #include "WeightCalc.h"
 #include "WeightCalcFactory.h"
+#include "Weight_t.h"
 
 namespace evwgh {
   /**
      \class WeightManager
   */
   class WeightManager {
-
   public:
-    
-    /// Default constructor
-    WeightManager(const std::string name="WeightManager");
-    
-    /// Default destructor
-    ~WeightManager(){}
+    WeightManager(const std::string name = "WeightManager");
 
     /// Name getter
     const std::string& Name() const;
 
-    /** 
+    /**
       * @brief Configuration function
       * @param cfg the input parameters for settings
       * @param the enging creator for the random seed (usually passed with *this)
@@ -57,8 +41,8 @@ namespace evwgh {
        1) Creates the Calculators requested in step 0, and assigne a different random seed to each one \n
        3) The future call WeightManager::Run will run the calculators           \n
     */
-    template <typename Module>
-    size_t Configure(fhicl::ParameterSet const & cfg, Module& module);
+    template <typename EngineCreator>
+    size_t Configure(fhicl::ParameterSet const& cfg, EngineCreator engineCreator);
 
     /**
       * @brief Core function (previous call to Configure is needed)
@@ -71,7 +55,7 @@ namespace evwgh {
        1) For each of them calculates the weights (more weight can be requested per calculator) \n
        3) Returns a map from "calculator name" to vector of weights calculated which is available inside MCEventWeight
      */
-    MCEventWeight Run(art::Event &e, const int inu);
+    MCEventWeight Run(art::Event& e, const int inu);
 
     /**
       * @brief Returns the map between calculator name and Weight_t product
@@ -79,20 +63,18 @@ namespace evwgh {
     std::map<std::string, Weight_t*> GetWeightCalcMap() { return fWeightCalcMap; }
 
     /// Reset
-    void Reset()
-    { _configured = false; }
+    void Reset() { _configured = false; }
 
     void PrintConfig();
 
-
   private:
     std::map<std::string, Weight_t*> fWeightCalcMap; ///< A set of custom weight calculators
-    bool _configured{false}; ///< Readiness flag
-    std::string _name; ///< Name
+    bool _configured{false};                         ///< Readiness flag
+    std::string _name;                               ///< Name
   };
 
-  template <typename Module>
-  size_t WeightManager::Configure(fhicl::ParameterSet const & p, Module& module)
+  template <typename EngineCreator>
+  size_t WeightManager::Configure(fhicl::ParameterSet const& p, EngineCreator createEngine)
   {
 
     ::art::ServiceHandle<rndm::NuRandomService> seedservice;
@@ -106,28 +88,26 @@ namespace evwgh {
       auto const ps_func = p.get<fhicl::ParameterSet>(func);
       std::string func_type = ps_func.get<std::string>("type");
 
-      WeightCalc* wcalc=WeightCalcFactory::Create(func_type+"WeightCalc");
+      WeightCalc* wcalc = WeightCalcFactory::Create(func_type + "WeightCalc");
       if (wcalc == nullptr)
-        throw cet::exception(__FUNCTION__) << "Function " << func << " requested in fcl file has not been registered!" << std::endl;
+        throw cet::exception(__FUNCTION__)
+          << "Function " << func << " requested in fcl file has not been registered!" << std::endl;
       if (fWeightCalcMap.find(func) != fWeightCalcMap.end())
-        throw cet::exception(__FUNCTION__) << "Function " << func << " has been requested multiple times in fcl file!" << std::endl;
+        throw cet::exception(__FUNCTION__)
+          << "Function " << func << " has been requested multiple times in fcl file!" << std::endl;
 
       // Create random engine for each rw function (name=func) (and seed it with random_seed set in the fcl)
-      (void)seedservice->createEngine(module, "HepJamesRandom", func, ps_func, "random_seed");
-      auto& engine = art::ServiceHandle<art::RandomNumberGenerator>{}
-      ->getEngine(art::ScheduleID::first(),
-                  module_label,
-                  func);
-
+      CLHEP::HepRandomEngine& engine = seedservice->registerAndSeedEngine(
+        createEngine("HepJamesRandom", func), "HepJamesRandom", func, ps_func, "random_seed");
       wcalc->SetName(func);
       wcalc->Configure(p, engine);
-      Weight_t* winfo=new Weight_t();
-      winfo->fWeightCalcType=func_type;
-      winfo->fWeightCalc=wcalc;
-      winfo->fNmultisims=ps_func.get<int>("number_of_multisims");
+      Weight_t* winfo = new Weight_t();
+      winfo->fWeightCalcType = func_type;
+      winfo->fWeightCalc = wcalc;
+      winfo->fNmultisims = ps_func.get<int>("number_of_multisims", 0);
 
       fWeightCalcMap.emplace(func, winfo);
-}
+    }
 
     _configured = true;
     return fWeightCalcMap.size();

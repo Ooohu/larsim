@@ -1,67 +1,53 @@
-#cet_enable_asserts()
+cet_build_plugin(PPFXFluxReader art::source
+  LIBRARIES PRIVATE
+    larsim::PPFXFluxReader
+)
 
-include_directories ( $ENV{DK2NUGENIE_INC}/GENIE )
-include_directories ( $ENV{DK2NUDATA_INC} )
-link_directories ( $ENV{DK2NUDATA_LIB} )
+cet_make_library(LIBRARY_NAME FluxInterface USE_PROJECT_NAME
+  SOURCE
+    DK2NuInterface.cxx
+    GSimpleInterface.cxx
+  LIBRARIES PUBLIC
+    GENIE::GTlFlx
+    ROOT::Physics
+  PRIVATE
+    CLHEP::CLHEP
+    GENIE::GFwAlg
+    GENIE::GFwEG
+    GENIE::GFwGHEP
+    GENIE::GFwMsg
+    ROOT::Tree
+    dk2nu::Genie
+    dk2nu::Tree
+    fhiclcpp::fhiclcpp
+    log4cpp::log4cpp
+    messagefacility::MF_MessageLogger
+    nusimdata::SimulationBase
+)
 
-file(GLOB INTERFACEFILES *Interface* )
-simple_plugin( PPFXFluxReader "source"
-	       PPFXFluxReader
-               # ${ART_FRAMEWORK_PERSISTENCY_COMMON}
-               BASENAME_ONLY
-             )
 
-art_make_library(LIBRARY_NAME FluxInterface 
-                 SOURCE	      ${INTERFACEFILES}
-                 LIBRARIES
-		       nusimdata_SimulationBase
-#GENIE STUFF########################################
-			gsl
-			xml2
-                 	${LOG4CPP}
-                 	GFwEG
-                 	GFwAlg
-                 	GFwMsg
-                 	GFwGHEP
-                 	GTlFlx
-                 	dk2nuTree
-                 	#${DK2NUDATA}
-                 	${DK2NUGENIE}
-####################################################
-                      cetlib cetlib_except
-		      ${FHICLCPP}
-                      ${MF_MESSAGELOGGER}
-		      ${CLHEP}
-                      ${ROOT_BASIC_LIB_LIST}
-                      ${Boost_SYSTEM_LIBRARY}
-	        ) 
-
-art_make( EXCLUDE PPFXFluxReader_source.cc ${INTERFACEFILES}
-	  BASENAME_ONLY
-          LIBRARY_NAME  PPFXFluxReader
-          LIB_LIBRARIES	nusimdata_SimulationBase
-	  		FluxInterface
-			larcoreobj_SummaryData
-	  		${ART_FRAMEWORK_CORE}
-                        art_Framework_IO_Sources
-                        ${ART_FRAMEWORK_PRINCIPAL}
-                        ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                   	art_Persistency_Common canvas
-                  	art_Persistency_Provenance canvas 
-                   	art_Utilities canvas
-			${MF_MESSAGELOGGER}
-                        ${MF_UTILITIES}
-                        ${FHICLCPP}
-                        ${Boost_SYSTEM_LIBRARY}
-                        ${ROOT_BASIC_LIB_LIST}
-			cetlib cetlib_except
-
-        )                                                           
+cet_make_library(
+  SOURCE PPFXFluxReader.cxx
+  LIBRARIES PUBLIC
+    larsim::FluxInterface
+    nusimdata::SimulationBase
+  PRIVATE
+    ROOT::Hist
+    art::Framework_Core
+    art::Framework_IO_Sources
+    art::Framework_Principal
+    art::Framework_Services_Registry
+    art_root_io::TFileService_service
+    canvas::canvas
+    dk2nu::Genie
+    dk2nu::Tree
+    fhiclcpp::fhiclcpp
+    larcoreobj::SummaryData
+    lardata::Utilities
+    messagefacility::MF_MessageLogger
+    nugen::EventGeneratorBase_GENIE
+)
 
 install_headers()
 install_source()
 install_fhicl()
-
-add_subdirectory(job)

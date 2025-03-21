@@ -4,43 +4,29 @@
 ///
 /// \author  echurch@fnal.gov
 ////////////////////////////////////////////////////////////////////////
-#ifndef FILTER_FILTERNODIRTNUS_H
-#define FILTER_FILTERNODIRTNUS_H
 
 /// Framework includes
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Core/EDFilter.h"
-
-// Framework includes
+#include "art/Framework/Core/SharedFilter.h"
 #include "art/Framework/Principal/Event.h"
-#include "fhiclcpp/ParameterSet.h"
 #include "art/Framework/Principal/Handle.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
+#include "fhiclcpp/ParameterSet.h"
 
 // LArSoft Includes
-#include "nusimdata/SimulationBase/MCTruth.h"
+#include "nusimdata/SimulationBase/MCParticle.h"
 
+#include <vector>
 
-namespace simb{
-  class MCTruth;
-}
-
-///Geant4 interface
+/// Geant4 interface
 namespace simfilter {
 
-  class FilterNoMCParticles : public art::EDFilter
-  {
+  class FilterNoMCParticles : public art::SharedFilter {
   public:
-
-    explicit FilterNoMCParticles(fhicl::ParameterSet const &pset);
-
-    bool filter(art::Event&) ;
-    void reconfigure(fhicl::ParameterSet const&)  ;
+    explicit FilterNoMCParticles(fhicl::ParameterSet const& pset, art::ProcessingFrame const&);
 
   private:
-
-    std::string fLArG4ModuleLabel;
-
+    bool filter(art::Event&, art::ProcessingFrame const&) override;
+    std::string const fLArG4ModuleLabel;
   };
 
 } // namespace simfilter
@@ -49,39 +35,20 @@ namespace simfilter {
 
   //-----------------------------------------------------------------------
   // Constructor
-  FilterNoMCParticles::FilterNoMCParticles(fhicl::ParameterSet const& pset) :
-    fLArG4ModuleLabel    (pset.get< std::string > ("LArG4ModuleLabel"   , "NoLabel")       )
+  FilterNoMCParticles::FilterNoMCParticles(fhicl::ParameterSet const& pset,
+                                           art::ProcessingFrame const&)
+    : SharedFilter{pset}, fLArG4ModuleLabel{pset.get<std::string>("LArG4ModuleLabel", "NoLabel")}
   {
-    this->reconfigure(pset);
+    async<art::InEvent>();
   }
 
   //-----------------------------------------------------------------------
-  void FilterNoMCParticles::reconfigure(fhicl::ParameterSet const& p)
+  bool FilterNoMCParticles::filter(art::Event& evt, art::ProcessingFrame const&)
   {
-
-    return;
+    auto const& mcps = *evt.getValidHandle<std::vector<simb::MCParticle>>(fLArG4ModuleLabel);
+    return not mcps.empty();
   }
 
-  //-----------------------------------------------------------------------
-  bool FilterNoMCParticles::filter(art::Event& evt)
-  {
-  //  bool interactionDesired(false);
-
-    art::Handle<std::vector<simb::MCParticle> > mcpHandle;
-    evt.getByLabel(fLArG4ModuleLabel,mcpHandle);
-
-
-    return mcpHandle->size()>0;
-
-
-  } // end FilterNoMCParticles()function
-
 } // namespace simfilter
 
-namespace simfilter {
-
-  DEFINE_ART_MODULE(FilterNoMCParticles)
-
-} // namespace simfilter
-
-#endif // FILTER_FILTERNODIRTNUS_H
+DEFINE_ART_MODULE(simfilter::FilterNoMCParticles)

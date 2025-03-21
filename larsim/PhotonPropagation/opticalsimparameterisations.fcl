@@ -1,0 +1,74 @@
+# Contains information required for:
+# Timing parameterisation for VUV photons (propagation time)
+
+BEGIN_PROLOG
+
+# VUV/DIRECT LIGHT: TIMING PARAMETERISATION
+# Parameters of the Landau + Exponential (<= 350 cm) and Landau (> 350 cm) models
+# Landau parameters
+Distances_landau_generic: [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 525, 550]
+Norm_over_entries_generic: [ [4.64837, 4.64837, 2.86581, 1.4143, 0.974871, 0.71311, 0.55772, 0.461078, 0.411807, 0.364951, 0.325477, 0.297132, 0.297132, 0.297132, 0.297132, 0.297132,0.297132, 0.297132,
+		0.297132, 0.297132, 0.297132, 0.297132, 0.297132],
+		[3.43562, 3.43562, 1.61042, 0.981127, 0.64465, 0.476552, 0.369063, 0.310461, 0.264819, 0.231387, 0.215373, 0.199128, 0.189638, 0.170387, 0.159308, 0.151498,0.140134, 0.135217, 0.131114, 0.129511, 0.126329, 0.12452, 0.124595] ]
+Mpv_generic: [	[2.73373, 2.73373, 3.599, 5.80141, 7.57883, 9.56959, 11.6047, 13.6676, 15.6126, 17.5389, 19.492, 21.3254, 21.3254, 21.3254, 21.3254, 21.3254, 21.3254, 21.3254, 21.3254, 21.3254, 21.3254,
+		21.3254, 21.3254],
+		[2.19076, 2.19076, 4.0163, 5.86531, 8.09466, 10.4547, 12.9261, 15.2731, 17.7939, 20.6664, 22.99, 25.7017, 27.9139, 30.9469, 33.6378, 36.1413, 39.8435, 42.1625, 44.6396, 46.5133, 48.6331, 50.6754, 53.3949] ]
+Width_generic: [ [0.198303, 0.198303, 0.347397, 0.562874, 0.750881, 0.998318, 1.2622, 1.55553, 1.79799, 2.05579, 2.3295, 2.57611, 2.57611, 2.57611, 2.57611, 2.57611,2.57611, 2.57611, 2.57611, 2.57611,
+		2.57611, 2.57611, 2.57611],
+		[0.305766, 0.305766, 0.508544, 0.747765, 1.12059, 1.57047, 2.07501, 2.54661, 3.09789, 3.79078, 4.19731, 4.74438, 5.09894, 5.83702, 6.36225, 6.80253, 8.278, 8.717, 9.2568, 9.7239, 10.5865, 11.3262, 11.8423] ]
+# Exponential parameters
+Distances_exp_generic: [0, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375]
+Slope_generic: [ [-0.181318, -0.181318, -0.148935, -0.126243, -0.10837, -0.0860558, -0.0759728, -0.0706126, -0.0672814, -0.0622897, -0.0577351, -0.0546709, -0.0546709, -0.0546709, -0.0546709, -0.0546709],
+			[-0.169274, -0.169274, -0.119906, -0.0983691, -0.0781793, -0.0659805, -0.0587059, -0.0545288, -0.0514041, -0.0489773, -0.047259, -0.0454668, -0.0439597, -0.0415122, -0.0396851, -0.0378005] ]
+Expo_over_Landau_norm_generic: [ [0.0149644, 0.0149644, 0.0337403, 0.0967895, 0.152669, 0.181732, 0.23025, 0.290033, 0.338948, 0.372986, 0.404828, 0.441243, 0.441243, 0.441243, 0.441243, 0.441243],
+							[0.0252807, 0.0252807, 0.0638727, 0.113343, 0.165669, 0.216794, 0.274868, 0.325299, 0.38959, 0.466117, 0.515046, 0.578897, 0.621872, 0.689713, 0.742833, 0.773619] ]
+
+
+# *************************************************************************************************
+#  VUV time model, generic for all experiments (at first order)
+# *************************************************************************************************
+
+common_vuv_timing_parameterization:
+{
+  # Timing parameterisaion:
+  #
+  # Parameters of the Landau + Exponential (<= 350 cm) and Landau (> 350 cm) models
+  # Landau parameters
+  Distances_landau: @local::Distances_landau_generic
+  Norm_over_entries: @local::Norm_over_entries_generic
+  Mpv: @local::Mpv_generic
+  Width: @local::Width_generic
+
+  # Exponential parameters
+  Distances_exp: @local::Distances_exp_generic
+  Slope: @local::Slope_generic
+
+  # Normalisations
+  Expo_over_Landau_norm:  @local::Expo_over_Landau_norm_generic
+
+  # Discretisation step size in cm
+  step_size: 1.
+  # Min and maximum distance in cm parameterisations are generated for (only generated when required to prevent long initial loading time)
+  max_d: 2500.
+  min_d: 25.
+  # VUV group velocity in cm/ns
+  vuv_vgroup_mean: 13.5
+  vuv_vgroup_max: 18.
+  # Distance in cm from "Landau + Expo" -> "Single Landau" model
+  inflexion_point_distance: 350.
+
+  # angular bin size in deg, must correspond to parameterisation set
+  angle_bin_timing_vuv: 45
+}
+
+
+END_PROLOG
+
+
+
+
+
+
+
+
+

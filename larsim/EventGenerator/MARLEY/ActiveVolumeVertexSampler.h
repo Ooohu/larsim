@@ -16,18 +16,25 @@
 #include <string>
 
 // framework includes
-#include "fhiclcpp/ParameterSet.h"
+#include "fhiclcpp/types/Atom.h"
+#include "fhiclcpp/types/Comment.h"
+#include "fhiclcpp/types/Name.h"
 #include "fhiclcpp/types/OptionalAtom.h"
 #include "fhiclcpp/types/Sequence.h"
 #include "fhiclcpp/types/Table.h"
-#include "cetlib_except/exception.h"
-#include "messagefacility/MessageLogger/MessageLogger.h"
+namespace fhicl {
+  class ParameterSet;
+}
 
 // art extensions
-#include "nutools/RandomUtils/NuRandomService.h"
+namespace rndm {
+  class NuRandomService;
+}
 
 // LArSoft includes
-#include "larcore/Geometry/Geometry.h"
+namespace geo {
+  class Geometry;
+}
 
 // ROOT includes
 #include "TLorentzVector.h"
@@ -36,70 +43,95 @@ namespace evgen {
 
   class ActiveVolumeVertexSampler {
 
-    public:
+  public:
+    using Name = fhicl::Name;
+    using Comment = fhicl::Comment;
 
-      using Name = fhicl::Name;
-      using Comment = fhicl::Comment;
+    /// Collection of configuration parameters used to
+    /// determine the vertex location for each event
+    struct Config {
+      fhicl::Atom<std::string> type_{
+        Name("type"),
+        Comment("Technique used to choose vertex locations"),
+        "sampled" // default value
+      };
 
-      /// Collection of configuration parameters used to
-      /// determine the vertex location for each event
-      struct Config {
-        fhicl::Atom<std::string> type_ {
-          Name("type"),
-          Comment("Technique used to choose vertex locations"),
-          "sampled" // default value
-        };
+      fhicl::OptionalAtom<std::string> seed_{Name("seed"),
+                                             Comment("Seed used for sampling vertex locations"),
+                                             [this]() -> bool { return type_() != "fixed"; }};
 
-        fhicl::OptionalAtom<std::string> seed_ {
-          Name("seed"),
-          Comment("Seed used for sampling vertex locations"),
-          [this]() -> bool { return type_() == "sampled"; }
-        };
+      fhicl::Sequence<double, 3> position_{Name("position"),
+                                           Comment("Coordinates of the fixed vertex position"),
+                                           [this]() -> bool { return type_() == "fixed"; }};
 
-        fhicl::Sequence<double, 3> position_ {
-          Name("position"),
-          Comment("Coordinates of the fixed vertex position"),
-          [this]() -> bool { return type_() == "fixed"; }
-        };
+      fhicl::Sequence<double, 3> min_position_{
+        Name("min_position"),
+        Comment("The minimum allowed values for the x, y, and z coordinates"),
+        [this]() -> bool { return type_() == "box"; }};
 
-      }; // struct Config
+      fhicl::Sequence<double, 3> max_position_{
+        Name("max_position"),
+        Comment("The maximum allowed values for the x, y, and z coordinates"),
+        [this]() -> bool { return type_() == "box"; }};
 
-      enum class vertex_type_t { kSampled, kFixed };
+      fhicl::OptionalAtom<bool> check_active_{
+        Name("check_active"),
+        Comment("Whether to enforce that the sampled vertices are within a TPC"
+                " active volume"),
+        [this]() -> bool { return type_() == "box"; }};
 
-      // Configuration-checking constructors
-      ActiveVolumeVertexSampler(const fhicl::Table<Config>& conf,
-        rndm::NuRandomService& rand_service, const geo::Geometry& geom,
-        const std::string& generator_name);
+    }; // struct Config
 
-      ActiveVolumeVertexSampler(const fhicl::ParameterSet& pset,
-        rndm::NuRandomService& rand_service, const geo::Geometry& geom,
-        const std::string& generator_name)
-        : ActiveVolumeVertexSampler(fhicl::Table<Config>(pset, {}),
-        rand_service, geom, generator_name) {}
+    enum class vertex_type_t { kSampled, kFixed, kBox };
 
-      void reconfigure(const fhicl::Table<Config>& conf,
-        const geo::Geometry& geom);
+    // Configuration-checking constructors
+    ActiveVolumeVertexSampler(const fhicl::Table<Config>& conf,
+                              rndm::NuRandomService& rand_service,
+                              const geo::Geometry& geom,
+                              const std::string& generator_name);
 
-      // Function that selects a primary vertex location for each event.
-      // TODO: add time sampling
-      TLorentzVector sample_vertex_pos(const geo::Geometry& geom);
+    ActiveVolumeVertexSampler(const fhicl::ParameterSet& pset,
+                              rndm::NuRandomService& rand_service,
+                              const geo::Geometry& geom,
+                              const std::string& generator_name)
+      : ActiveVolumeVertexSampler(fhicl::Table<Config>(pset, {}),
+                                  rand_service,
+                                  geom,
+                                  generator_name)
+    {}
 
-    protected:
+    void reconfigure(const fhicl::Table<Config>& conf, const geo::Geometry& geom);
 
-      // Currently sampled vertex position (doesn't change value if the vertex
-      // is fixed)
-      TLorentzVector fVertexPosition;
+    // Function that selects a primary vertex location for each event.
+    // TODO: add time sampling
+    TLorentzVector sample_vertex_pos(const geo::Geometry& geom);
 
-      vertex_type_t fVertexType;
+  protected:
+    // Currently sampled vertex position (doesn't change value if the vertex
+    // is fixed)
+    TLorentzVector fVertexPosition;
 
-      std::string fGeneratorName;
+    vertex_type_t fVertexType;
 
-      // Discrete distribution object used to sample TPCs based on their active
-      // masses
-      std::unique_ptr<std::discrete_distribution<size_t> > fTPCDist;
+    std::string fGeneratorName;
 
-      // RNG object used to sample TPCs
-      std::mt19937_64 fTPCEngine;
+    // Discrete distribution object used to sample TPCs based on their active
+    // masses
+    std::unique_ptr<std::discrete_distribution<size_t>> fTPCDist;
+
+    // RNG object used to sample TPCs
+    std::mt19937_64 fTPCEngine;
+
+    // Helper variables used only for "box" sampling mode
+    double fXmin;
+    double fYmin;
+    double fZmin;
+
+    double fXmax;
+    double fYmax;
+    double fZmax;
+
+    bool fCheckActive;
 
   }; // class evgen::ActiveVolumeVertexSampler
 

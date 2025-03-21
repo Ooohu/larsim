@@ -1,64 +1,41 @@
-
 add_subdirectory(job)
 
-art_make( 
-	  
-          LIB_LIBRARIES    larcorealg_Geometry
-			   larcore_Geometry_Geometry_service
-			   larsim_Simulation nutools_ParticleNavigation lardataobj_Simulation
-			   nusimdata_SimulationBase
-			   larcoreobj_SummaryData
-			   lardata_Utilities
-			   lardataobj_MCBase
-			   ${ART_FRAMEWORK_CORE}
-			   ${ART_FRAMEWORK_PRINCIPAL}
-                           ${ART_FRAMEWORK_BASIC}
-			   ${ART_FRAMEWORK_SERVICES_REGISTRY}
-			   ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-			   ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-			   art_Persistency_Common
-			   art_Persistency_Provenance
-	 		   art_Utilities
-                           canvas
-			   ${MF_MESSAGELOGGER}
-			   
-			   ${FHICLCPP}
-			   cetlib cetlib_except
-			   ${ROOT_GEOM}
-			   ${ROOT_XMLIO}
-			   ${ROOT_GDML}
-			   ${ROOT_BASIC_LIB_LIST}
-          MODULE_LIBRARIES larsim_MCSTReco
-			   larcorealg_Geometry
-			   larcore_Geometry_Geometry_service
-			   larsim_Simulation nutools_ParticleNavigation lardataobj_Simulation
-			   nusimdata_SimulationBase
-			   larcoreobj_SummaryData
-			   lardata_Utilities
-			   lardataobj_MCBase
-			   nutools_RandomUtils_NuRandomService_service
-			   ${ART_FRAMEWORK_CORE}
-			   ${ART_FRAMEWORK_PRINCIPAL}
-                           ${ART_FRAMEWORK_BASIC}
-			   ${ART_FRAMEWORK_SERVICES_REGISTRY}
-			   ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-			   ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-			   art_Persistency_Common
-			   art_Persistency_Provenance
-			   art_Utilities
-                           canvas
-			   ${MF_MESSAGELOGGER}
-			   
-			   ${FHICLCPP}
-			   cetlib cetlib_except
-			   ${ROOT_GEOM}
-			   ${ROOT_XMLIO}
-			   ${ROOT_GDML}
-			   ${ROOT_BASIC_LIB_LIST}
-		  	   ${ROOT_EG}
-			   ${CLHEP}
-			   ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
-			)
+cet_make_library(SOURCE
+  MCRecoEdep.cxx
+  MCRecoPart.cxx
+  MCShowerRecoAlg.cxx
+  MCShowerRecoPart.cxx
+  MCTrackCollectionAnaAlg.cxx
+  MCTrackRecoAlg.cxx
+  LIBRARIES
+  PUBLIC
+  larcore::Geometry_Geometry_service
+  lardataobj::MCBase
+  lardataobj::Simulation
+  larcorealg::Geometry
+  larcoreobj::SimpleTypesAndConstants
+  nusimdata::SimulationBase
+  cetlib_except::cetlib_except
+  ROOT::Physics
+  PRIVATE
+  art::Framework_Services_Registry
+  canvas::canvas
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  ROOT::Core
+  ROOT::MathCore
+  ROOT::Tree
+)
+
+cet_build_plugin(MCReco art::EDProducer
+  LIBRARIES PRIVATE
+  larsim::MCSTReco
+  lardataobj::MCBase
+  art::Framework_Principal
+  canvas::canvas
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+)
 
 install_headers()
 install_fhicl()

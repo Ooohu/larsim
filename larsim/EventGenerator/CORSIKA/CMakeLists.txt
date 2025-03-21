@@ -1,34 +1,22 @@
-
-art_make( 
-          MODULE_LIBRARIES 
-                        larcoreobj_SummaryData
-                        larcorealg_Geometry
-                        larcore_Geometry_Geometry_service
-                        nutools_RandomUtils_NuRandomService_service
-                        larsim_Simulation lardataobj_Simulation
-                        nusimdata_SimulationBase
-                        ${ART_FRAMEWORK_CORE}
-                        ${ART_FRAMEWORK_PRINCIPAL}
-                        ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
-                        art_Persistency_Common
-                        art_Persistency_Provenance
-                        art_Utilities
-                        canvas
-                        ${MF_MESSAGELOGGER}
-                        
-                        ${FHICLCPP}
-                        cetlib cetlib_except
-                        ${CLHEP}
-                        ${ROOT_BASIC_LIB_LIST}
-                        ${SQLITE3}
-                        ${ROOT_EG}
-                        ${IFDH}
-        )
+cet_build_plugin(CORSIKAGen art::EDProducer
+  LIBRARIES PRIVATE
+  larcore::Geometry_Geometry_service
+  larcorealg::Geometry
+  larcoreobj::SummaryData
+  nurandom::RandomUtils_NuRandomService_service
+  nusimdata::SimulationBase
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  ifdh::ifdh
+  messagefacility::MF_MessageLogger
+  ROOT::Core
+  ROOT::EG
+  CLHEP::Random
+  SQLite::SQLite3
+)
 
 install_headers()
 install_fhicl()
 install_source()
-

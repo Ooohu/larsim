@@ -1,33 +1,34 @@
-
-# for classes_def.xml!!
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
-
-art_make( NO_PLUGINS
-          
-          LIB_LIBRARIES larsim_Simulation_LArVoxelCalculator_service
-	                larsim_Simulation_LArG4Parameters_service
-			lardataobj_Simulation
-	                lardata_Utilities
-	                nusimdata_SimulationBase
-                        ${ART_FRAMEWORK_CORE}
-			${ART_FRAMEWORK_PRINCIPAL}
-			${ART_FRAMEWORK_SERVICES_REGISTRY}
-			art_Persistency_Common
-			art_Persistency_Provenance
-			art_Utilities
-                        canvas
-			${MF_MESSAGELOGGER}
-			
-			cetlib cetlib_except
-			${ROOT_BASIC_LIB_LIST}
-        )
-
-simple_plugin(LArVoxelCalculator "service"
-			cetlib_except
+cet_build_plugin(LArVoxelCalculator art::service
+  LIBRARIES PRIVATE
+  fhiclcpp::fhiclcpp
 )
 
-simple_plugin(LArG4Parameters "service"
-			cetlib_except
+cet_build_plugin(LArG4Parameters art::service
+  LIBRARIES
+  PUBLIC
+  larcoreobj::SimpleTypesAndConstants
+  PRIVATE
+  fhiclcpp::fhiclcpp
+)
+
+cet_make_library(SOURCE
+	PhotonVoxels.cxx
+  LArVoxelData.cxx
+  LArVoxelID.cxx
+  LArVoxelList.cxx
+  SimListUtils.cxx
+  LIBRARIES
+  PUBLIC
+  larcorealg::Geometry
+  larcoreobj::SimpleTypesAndConstants
+  lardataobj::Simulation
+  ROOT::Physics
+  PRIVATE
+  larsim::Simulation_LArVoxelCalculator_service
+  larsim::Simulation_LArG4Parameters_service
+  lardata::DetectorClocksService
+  art::Framework_Principal
+  art::Framework_Services_Registry
 )
 
 install_headers()

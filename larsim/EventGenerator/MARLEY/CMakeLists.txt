@@ -1,62 +1,57 @@
+cet_make_library(SOURCE
+  ActiveVolumeVertexSampler.cxx
+  MARLEYHelper.cxx
+  MarleyParameterSetWalker.h
+  LIBRARIES
+  PUBLIC
+  nusimdata::SimulationBase
+  fhiclcpp::types
+  messagefacility::MF_MessageLogger
+  fhiclcpp::fhiclcpp
+  ROOT::Physics
+  MARLEY::MARLEY
+  PRIVATE
+  larcore::Geometry_Geometry_service
+  larcorealg::Geometry
+  MARLEY::MARLEY_ROOT
+  ROOT::Core
+  nurandom::RandomUtils_NuRandomService_service
+  cetlib_except::cetlib_except
+)
 
-# for c2: the problem is in fhiclcpp/types/detail/Sequence.icc
-cet_add_compiler_flags( CXX -Wno-missing-braces )
+cet_build_plugin(MARLEYGen art::EDProducer
+  LIBRARIES PRIVATE
+  larsim::EventGenerator_MARLEY
+  larcore::Geometry_Geometry_service
+  larcoreobj::SummaryData
+  lardataobj::Simulation
+  nurandom::RandomUtils_NuRandomService_service
+  art_root_io::TFileService_service
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  ROOT::Tree
+)
 
-#include_directories ( $ENV{MARLEY_INC} )
-
-art_make(
-      LIB_LIBRARIES
-                        larsim_Simulation
-                        lardataobj_Simulation
-                        lardataobj_Simulation_dict
-                        nusimdata_SimulationBase
-	                larcorealg_Geometry
-                        larcore_Geometry_Geometry_service
-                        nutools_RandomUtils_NuRandomService_service
-                        ${MARLEY}
-                        ${MARLEY_ROOT}
-                        ${ART_FRAMEWORK_CORE}
-                        ${ART_FRAMEWORK_PRINCIPAL}
-                        ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
-                        ${MF_MESSAGELOGGER}
-                        
-                        ${FHICLCPP}
-                        cetlib cetlib_except
-                        ${ROOT_BASIC_LIB_LIST}
-                        ${ROOT_GEOM}
-      MODULE_LIBRARIES 
-                        larsim_EventGenerator_MARLEY
-                        larsim_Simulation
-                        lardata_Utilities
-                        lardataobj_Simulation
-                        lardataobj_Simulation_dict
-                        nusimdata_SimulationBase
-                        larcoreobj_SummaryData
-                        larcorealg_Geometry
-                        larcore_Geometry_Geometry_service
-                        nutools_RandomUtils_NuRandomService_service
-                        ${MARLEY}
-                        ${MARLEY_ROOT}
-                        ${ART_FRAMEWORK_CORE}
-                        ${ART_FRAMEWORK_PRINCIPAL}
-                        ${ART_FRAMEWORK_SERVICES_REGISTRY}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_TFILESERVICE_SERVICE}
-                        ${ART_FRAMEWORK_SERVICES_OPTIONAL_RANDOMNUMBERGENERATOR_SERVICE}
-                        art_Persistency_Common
-                        art_Persistency_Provenance
-                        art_Utilities
-                        canvas
-                        ${MF_MESSAGELOGGER}
-                        
-                        ${FHICLCPP}
-                        cetlib cetlib_except
-                        ${CLHEP}
-                        ${ROOT_BASIC_LIB_LIST}
-                        ${ROOT_GEOM}
-                        ${G4_LIB_LIST}
-        )
+cet_build_plugin(MARLEYTimeGen art::EDProducer
+  LIBRARIES PRIVATE
+  larsim::EventGenerator_MARLEY
+  larcore::Geometry_Geometry_service
+  larcoreobj::SummaryData
+  lardataobj::Simulation
+  nusimdata::SimulationBase
+  nurandom::RandomUtils_NuRandomService_service
+  art_root_io::TFileService_service
+  art_root_io::tfile_support
+  art::Framework_Principal
+  art::Framework_Services_Registry
+  canvas::canvas
+  cetlib_except::cetlib_except
+  MARLEY::MARLEY
+  MARLEY::MARLEY_ROOT
+  ROOT::Hist
+  ROOT::RIO
+  ROOT::Tree
+)
 
 install_headers()
 install_fhicl()

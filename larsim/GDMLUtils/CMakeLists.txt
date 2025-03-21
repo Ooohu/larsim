@@ -1,9 +1,6 @@
-include_directories ( $ENV{GEANT4_FQ_DIR}/include )
-include_directories ( $ENV{XERCES_C_INC} )
-
-art_make_exec(NAME simplifyGDML
-  LIBRARIES
-    ${CLHEP}
-    ${G4_LIB_LIST}
-  )
-
+cet_make_exec(NAME simplifyGDML
+  LIBRARIES PRIVATE
+  Geant4::G4global
+  Geant4::G4persistency
+  Geant4::G4geometry
+)
