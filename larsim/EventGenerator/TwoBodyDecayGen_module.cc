@@ -57,12 +57,15 @@
 
 // nutools includes
 #include "nusimdata/SimulationBase/MCTruth.h"
+#include "nusimdata/SimulationBase/MCFlux.h"
 #include "nusimdata/SimulationBase/MCParticle.h"
 #include "nutools/EventGeneratorBase/evgenbase.h"
 
 // lar includes
 //#include "larcore/Geometry/Geometry.h"
 //#include "larcoreobj/SummaryData/RunData.h"
+
+#include "lardata/Utilities/AssociationUtil.h"
 
 #include "TVector3.h"
 #include "TDatabasePDG.h"
@@ -82,6 +85,7 @@
 //art::EDProducer define the class, declare variables
 //setup() loads the FHiCL files
 //SampleMany() is the actual calculation for the twobodydecay.
+//produce() store particles
 //-----------------
 
 namespace simb { class MCTruth; }
@@ -93,7 +97,7 @@ namespace evgen {
 
     public:
 
-		//--- Validation of configurations
+        //--- Validation of configurations
       struct Config {
         using Name = fhicl::Name;
         using Comment = fhicl::Comment;
@@ -242,7 +246,7 @@ namespace evgen {
         //-----
         //Begin Exclusive Parameters
         //-----
-		//Mother Particle Mass
+        //Mother Particle Mass
         fhicl::Atom<std::string> MotherMassDist{
           Name("MotherMassDist"),
             Comment("mother mass distribution type: " + presentOptions(DistributionNames)),
@@ -259,7 +263,7 @@ namespace evgen {
           //          [this]() { return !fromHistogram(PDist()); }
         };
 
- 		//Mother Particle Momentum
+         //Mother Particle Momentum
         fhicl::Sequence<std::string> ZPHist{
           Name("ZPHist"),
             Comment("name of the histograms of creation Z [cm] - momentum [GeV] distributions"),
@@ -285,7 +289,7 @@ namespace evgen {
             [this](){ return fromHistogram(AngleDist()); }
         };
 
-		//Mother particle travel distance before entering the detector, dist1; dist2 is the exiting distance, ignore it for now;
+        //Mother particle travel distance before entering the detector, dist1; dist2 is the exiting distance, ignore it for now;
         fhicl::Atom<std::string> Traveldist1Dist{
           Name("Traveldist1Dist"),
             Comment("Travel distance estimator type: " + presentOptions(DistributionNames)),
@@ -299,7 +303,7 @@ namespace evgen {
         };
 
 
-		//First Daughter Outgoing Angle in the rest frame
+        //First Daughter Outgoing Angle in the rest frame
         fhicl::Atom<std::string> AngEXTDist{
           Name("AngEXTDist"),
             Comment("angular distribution type: " + presentOptions(DistributionNames)),
@@ -346,6 +350,11 @@ namespace evgen {
       void produce(art::Event& evt);
       void beginRun(art::Run& run);
 
+      //Begin exclusive function
+      //Extra piece information to store where the particle is created.
+      TLorentzVector GetCeationPoint(std::vector<double> boxDim, TLorentzVector dkvertex, TLorentzVector dir, double dist);
+      //End exclusive function
+
     private:
 
       /// Names of all particle selection modes.
@@ -355,8 +364,8 @@ namespace evgen {
 
       void SampleOne(unsigned int   i, 
           simb::MCTruth &mct);        
-      void SampleMany(simb::MCTruth &mct);        
-      void Sample(simb::MCTruth &mct);        
+      void SampleMany(simb::MCTruth &mct, simb::MCFlux &flux);
+      void Sample(simb::MCTruth &mct, simb::MCFlux &flux);
       void printVecs(std::vector<std::string> const& list);
       bool PadVector(std::vector<double> &vec);      
       double SelectFromHist(const TH1& h);
@@ -415,8 +424,8 @@ namespace evgen {
       int                 fAngEXTDist;
       std::vector<double> fTheta0YZEXT;
       std::vector<double> fSigmaTheta0YZEXT;
-	  
-	  //Histogram Objects with prefex of h
+      
+      //Histogram Objects with prefex of h
       std::vector<std::unique_ptr<TH2>> hZPHist ;     /// actual TH2 for Creation Z (CZ) - momentum(GeV) distributions
       std::vector<std::unique_ptr<TH2>> hZTHist ;     /// actual TH2 for Creation Z (CZ) - time(ns) distributions
       std::vector<std::unique_ptr<TH2>> hZTheta0XZHist ; /// actual TH2 for angle distributions - Xz on x axis with fixed CZ
@@ -429,11 +438,11 @@ namespace evgen {
       std::vector<std::string> fZTheta0YZHist;     ///< name of histogram of yz angle
       std::vector<std::string> fZdist1Hist;     ///< name of histogram of travel distance
 
-	  int						fTraveldist1Dist; //distribution types for travel distance
+      int                        fTraveldist1Dist; //distribution types for travel distance
       //End Exclusive Parameters
 
       std::string fHistFileName;               ///< Filename containing histogram of momenta
-	  std::vector<std::string> fPHist;     ///< name of histogram of momenta
+      std::vector<std::string> fPHist;     ///< name of histogram of momenta
       std::vector<std::string> fThetaXzYzHist;   ///< name of histogram for thetaxz/thetayz distribution
 
     std::vector<std::unique_ptr<TH1>> hPHist ;     /// actual TH1 for momentum distributions
@@ -519,6 +528,50 @@ namespace evgen {
 }
 
 namespace evgen{
+
+    //Begin exclusive function
+    TLorentzVector TwoBodyDecayGen::GetCeationPoint(std::vector<double> boxDim, TLorentzVector dkvertex, TLorentzVector dir, double dist){
+            
+        TVector3 tmp_pos(dkvertex.X(), dkvertex.Y(), dkvertex.Z());//decay vertex
+        TVector3 tmp_dir(dir.X(), dir.Y(), dir.Z());//3-momentum
+        tmp_dir = tmp_dir.Unit();
+
+        double t_min = -1, t_max = 1e20;
+
+        for( int index = 0; index < 3; index++){//0,1,2 = x,y,z
+            double pmin = boxDim[2*index];//get the corner of the boxDim
+            double pmax = boxDim[2*index+1];
+
+            if (dir[index] != 0) {  // Avoid division by zero
+                double t1 = (pmin - dkvertex[index]) / dir[index];
+                double t2 = (pmax - dkvertex[index]) / dir[index];
+
+                if (t1 > t2) std::swap(t1, t2);
+                t_min = std::max(t_min, t1);//get the closest edge in,x, y, or z opposite to the dir
+                t_max = std::min(t_max, t2);//get the closest edge in,x, y, or z along the dir
+            } else if (dkvertex[index] < pmin || dkvertex[index] > pmax) {
+                std::cout<<"Error, particles are simulated outside the defined region. Return the decay vertex."<<std::endl;
+                return dkvertex;
+            }
+        }//t_min is used to projected the intersecting point for particle entering.
+
+        if (t_min > t_max || t_max < 0) {
+            std::cout<<"Error, intersection calculation does not make sense. Return the decay vertex."<<std::endl;
+            return dkvertex;  // No valid intersection
+        }
+
+        TVector3 entry = tmp_pos - t_min * tmp_dir;  // Compute entry point
+
+        // Find point at a given dist along the path
+        double t_length = dist;//because tmp_dir is a unit vector;
+        TVector3 creation_pos = entry - t_length * tmp_dir;
+
+        TLorentzVector mpcp(creation_pos, dkvertex.T());//mother particle creation point, to be calculated
+
+        return mpcp;
+
+    }
+    //end exclusive function
 
   std::map<int, std::string> TwoBodyDecayGen::makeParticleSelectionModeNames() {
     std::map<int, std::string> names;
@@ -644,8 +697,8 @@ namespace evgen{
     , fZTHist        (config().ZTHist())
     , fZTheta0XZHist  (config().ZTheta0XZHist())
     , fZTheta0YZHist  (config().ZTheta0YZHist())
-	, fZdist1Hist     (config().Zdist1Hist())
-	, fTraveldist1Dist(selectOption(config().Traveldist1Dist(), DistributionNames))
+    , fZdist1Hist     (config().Zdist1Hist())
+    , fTraveldist1Dist(selectOption(config().Traveldist1Dist(), DistributionNames))
     //End Exclusive Parameters
     , fHistFileName (config().HistogramFile())
 //    , fPHist        (config().PHist())
@@ -678,7 +731,7 @@ namespace evgen{
     // the seed midstream
     std::vector<std::string> vlist(21);
 
-	//Take care of parameters for numerical values
+    //Take care of parameters for numerical values
     vlist[0]  = "PDG";
     vlist[1]  = "P0";
     vlist[2]  = "SigmaP";
@@ -703,7 +756,10 @@ namespace evgen{
     vlist[19] = "Theta0YZEXT";     
     vlist[20] = "SigmaTheta0YZEXT";
     // End Exclusive Parameters
-
+    //
+    // Beacuse I want MCFlux
+    produces< std::vector<simb::MCFlux>  >();
+    produces< art::Assns<simb::MCTruth, simb::MCFlux> >();
 
     //    vlist[15] = "ZPHist";
     //    vlist[16] = "ThetaHist";
@@ -713,15 +769,15 @@ namespace evgen{
     std::string list;
     if (fPDist != kHIST) {
       if( !this->PadVector(fP0            ) ){ list.append(vlist[1].append(", \n")); }
-	  if( !this->PadVector(fSigmaP        ) ){ list.append(vlist[2].append(", \n")); }
+      if( !this->PadVector(fSigmaP        ) ){ list.append(vlist[2].append(", \n")); }
     }
 
-	if(fAngleDist != kHIST){ 
-		if( !this->PadVector(fTheta0XZ        ) ){ list.append(vlist[9].append(", \n")); }
-		if( !this->PadVector(fTheta0YZ        ) ){ list.append(vlist[10].append(", \n")); }
-		if( !this->PadVector(fSigmaThetaXZ    ) ){ list.append(vlist[11].append(", \n")); }
-		if( !this->PadVector(fSigmaThetaYZ    ) ){ list.append(vlist[12].append("  \n")); }
-	}
+    if(fAngleDist != kHIST){ 
+        if( !this->PadVector(fTheta0XZ        ) ){ list.append(vlist[9].append(", \n")); }
+        if( !this->PadVector(fTheta0YZ        ) ){ list.append(vlist[10].append(", \n")); }
+        if( !this->PadVector(fSigmaThetaXZ    ) ){ list.append(vlist[11].append(", \n")); }
+        if( !this->PadVector(fSigmaThetaYZ    ) ){ list.append(vlist[12].append("  \n")); }
+    }
 
     if( !this->PadVector(fX0              ) ){ list.append(vlist[3].append(", \n")); }
     if( !this->PadVector(fY0              ) ){ list.append(vlist[4].append(", \n")); }
@@ -814,27 +870,27 @@ namespace evgen{
     //
     // deal with time distribution
     //
-	switch (fTDist) {
-		case kGAUS: case kUNIF: break; // supported, no further action needed
-		case kHIST:
-			hZTHist.reserve(fZTHist.size());
-			for (auto const& histName: fZTHist) {
-				TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
-				if (!temHist) {
-					throw art::Exception(art::errors::NotFound)
-						<< "Failed to read direction histogram '" << histName << "' from '" << histFile->GetPath() << "\'";
-				}
-				temHist->SetDirectory(nullptr); // make it independent of the input file
-				hZTHist.emplace_back(temHist);
-			} // for
-			break;
+    switch (fTDist) {
+        case kGAUS: case kUNIF: break; // supported, no further action needed
+        case kHIST:
+            hZTHist.reserve(fZTHist.size());
+            for (auto const& histName: fZTHist) {
+                TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
+                if (!temHist) {
+                    throw art::Exception(art::errors::NotFound)
+                        << "Failed to read direction histogram '" << histName << "' from '" << histFile->GetPath() << "\'";
+                }
+                temHist->SetDirectory(nullptr); // make it independent of the input file
+                hZTHist.emplace_back(temHist);
+            } // for
+            break;
 
-		default:
-			throw art::Exception(art::errors::Configuration)
-				<< "Time distribution of type '"
-				<< optionName(fTDist, DistributionNames)
-				<< "' (" << std::to_string(fTDist) << ") is not supported.";
-	} // switch(fTDist)
+        default:
+            throw art::Exception(art::errors::Configuration)
+                << "Time distribution of type '"
+                << optionName(fTDist, DistributionNames)
+                << "' (" << std::to_string(fTDist) << ") is not supported.";
+    } // switch(fTDist)
 
     //
     // deal with momentum distribution
@@ -845,7 +901,7 @@ namespace evgen{
         //  throw art::Exception(art::errors::Configuration)
         //    << fPHist.size() << " momentum histograms to describe " << fPDG.size() << " particle types...";
         //}
-	   //Keng disables the reading of 1d spectrum of PHist
+       //Keng disables the reading of 1d spectrum of PHist
        // hPHist.reserve(fPHist.size());
        // for (auto const& histName: fPHist) {
        //   TH1* temHist = dynamic_cast<TH1*>(histFile->Get(histName.c_str()));
@@ -876,12 +932,11 @@ namespace evgen{
 
     switch (fAngleDist) {
       case kHIST:
-        // CHECK, ignore warning
         // if (fThetaXzYzHist.size() != fPDG.size()) {
         //   throw art::Exception(art::errors::Configuration)
         //     << fThetaXzYzHist.size() << " direction histograms to describe " << fPDG.size() << " particle types...";
         // }
-		//Keng disables the drawing of both angles in 1 2dhist.
+        //Keng disables the drawing of both angles in 1 2dhist.
         //hThetaXzYzHist.reserve(fThetaXzYzHist.size());
         //for (auto const& histName: fThetaXzYzHist) {
         //  TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
@@ -892,7 +947,7 @@ namespace evgen{
         //  temHist->SetDirectory(nullptr); // make it independent of the input file
         //  hThetaXzYzHist.emplace_back(temHist);
         //} // Two more histograms for angles
-		//First Xz
+        //First Xz
         hZTheta0XZHist.reserve(fZTheta0XZHist.size());
         for (auto const& histName: fZTheta0XZHist) {
           TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
@@ -904,7 +959,7 @@ namespace evgen{
           hZTheta0XZHist.emplace_back(temHist);
         } // Two more histograms for angles
 
-		//Then Yz
+        //Then Yz
         hZTheta0YZHist.reserve(fZTheta0YZHist.size());
         for (auto const& histName: fZTheta0YZHist) {
           TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
@@ -917,28 +972,28 @@ namespace evgen{
         } // Two more histograms for angles
 
 
-		break;
+        break;
       default: // supported, no further action needed
         break;
     } // switch(fAngleDist)
 
-	switch(fTraveldist1Dist){//Mother particle travel distance1
-		case(kHIST):
-			hZdist1Hist.reserve(fZdist1Hist.size());
-			for (auto const& histName: fZdist1Hist) {
-				TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
-				if (!temHist) {
-					throw art::Exception(art::errors::NotFound)
-						<< "Failed to read direction histogram '" << histName << "' from '" << histFile->GetPath() << "\'";
-				}
-				temHist->SetDirectory(nullptr); // make it independent of the input file
-				hZdist1Hist.emplace_back(temHist);
-			} // Two more histograms for angles
+    switch(fTraveldist1Dist){//Mother particle travel distance1
+        case(kHIST):
+            hZdist1Hist.reserve(fZdist1Hist.size());
+            for (auto const& histName: fZdist1Hist) {
+                TH2* temHist = dynamic_cast<TH2*>(histFile->Get(histName.c_str()));
+                if (!temHist) {
+                    throw art::Exception(art::errors::NotFound)
+                        << "Failed to read direction histogram '" << histName << "' from '" << histFile->GetPath() << "\'";
+                }
+                temHist->SetDirectory(nullptr); // make it independent of the input file
+                hZdist1Hist.emplace_back(temHist);
+            } // Two more histograms for angles
 
-			break;
-		default:
-			break;
-	}
+            break;
+        default:
+            break;
+    }
 
     delete histFile;
 
@@ -988,20 +1043,28 @@ namespace evgen{
   void TwoBodyDecayGen::produce(art::Event& evt)
   {
 
-    ///unique_ptr allows ownership to be transferred to the art::Event after the put statement
-    std::unique_ptr< std::vector<simb::MCTruth> > truthcol(new std::vector<simb::MCTruth>);
+      ///unique_ptr allows ownership to be transferred to the art::Event after the put statement
+      std::unique_ptr< std::vector<simb::MCTruth> > truthcol(new std::vector<simb::MCTruth>);
+      std::unique_ptr< std::vector<simb::MCFlux>  > fluxcol   (new std::vector<simb::MCFlux >);
+      std::unique_ptr< art::Assns<simb::MCTruth, simb::MCFlux> > tfassn(new art::Assns<simb::MCTruth, simb::MCFlux>);
 
-    simb::MCTruth truth;
-    truth.SetOrigin(simb::kSingleParticle);
-    Sample(truth);
+      simb::MCTruth truth;
+      simb::MCFlux flux;
+      truth.SetOrigin(simb::kSingleParticle);
+      Sample(truth, flux);
 
-    MF_LOG_DEBUG("TwoBodyDecayGen") << truth;
+      MF_LOG_DEBUG("TwoBodyDecayGen") << truth;
 
-    truthcol->push_back(truth);
+      truthcol->push_back(truth);
+      fluxcol->push_back(flux);
 
-    evt.put(std::move(truthcol));
+      util::CreateAssn(*this, evt, *truthcol, *fluxcol, *tfassn, fluxcol->size()-1, fluxcol->size());
 
-    return;
+      evt.put(std::move(truthcol));
+      evt.put(std::move(fluxcol));
+	  evt.put(std::move(tfassn));
+
+      return;
   }
 
   //____________________________________________________________________________
@@ -1014,7 +1077,7 @@ namespace evgen{
   // Draw the type, momentum and position for all particles from the 
   // FCIHL description.  
   // Use TH2D for P, Time, XZ, and YZ angles.
-  void TwoBodyDecayGen::SampleMany(simb::MCTruth &mct){
+  void TwoBodyDecayGen::SampleMany(simb::MCTruth &mct, simb::MCFlux &flux){
 
     bool fverbose = true;
 
@@ -1039,45 +1102,45 @@ namespace evgen{
     // define the momentum & Creation Z --> Arrival time, XZ, and YZ angle
     // Choose momentum
     double p = 0.0;
-    double CZ = 0.0;//This will be the key variable connecting all relative variables.
+
+    double CZ = 0.0;//This will be the key variable connecting all relative variables. 
+    //This is special, and it is measured in the NuMI coordinate. Do not use CZ to measure distance without conversion
 
     if (fPDist == kGAUS) {
       p = abs(gauss.fire(fP0[0], fSigmaP[0]));
     }
     else if (fPDist == kHIST){
 
-		//   p = SelectFromHist(*(hPHist[0]));
-		double tmpCZ = 0;
-		double tmpp = 0;
-		SelectFromHist(*(hZPHist[0]), tmpCZ, tmpp);
-		CZ = tmpCZ;
-		p = tmpp;
+        // p = SelectFromHist(*(hPHist[0]));
+        double tmpCZ = 0;
+        double tmpp = 0;
+        SelectFromHist(*(hZPHist[0]), tmpCZ, tmpp);
+        CZ = tmpCZ;
+        p = tmpp;
 
-	}
+    }
     else {
       std::cout<<"Error, momentum has to be drawn from the histogram"<<std::endl;
       p = fP0[0] + fSigmaP[0]*(2.0*flat.fire()-1.0);
     }
 
-	std::cout<<"CHECK "<<__LINE__<<" identify mother particle creation time "<<std::endl;
-	//Choose Time
+    //Choose Time
     double t = 0.;
     if(fTDist==kGAUS){
       t = gauss.fire(fT0[0], fSigmaT[0]);
     }
     else if (fTDist == kHIST){
 
-		double tmpt;
-		SelectFromHistFixX(*(hZTHist[0]), CZ, tmpt);
-		t = tmpt;
-	}
+        double tmpt;
+        SelectFromHistFixX(*(hZTHist[0]), CZ, tmpt);
+        t = tmpt;
+    }
     else{
       t = fT0[0] + fSigmaT[0]*(2.0*flat.fire()-1.0);
     }
 
     TLorentzVector pos(x[0], x[1], x[2], t);
 
-	std::cout<<"CHECK "<<__LINE__<<std::endl;
 
     // Determine mother particle mass
     double m = 0.0;
@@ -1089,18 +1152,17 @@ namespace evgen{
     }
 
     //Need to correct p, which was taken as energy
-	if(p > m ){//Physical, p was actually energy
-		p = sqrt(p*p - m*m);  
-	} else {
-		return;
-	}
+    if(p > m ){//Physical, p was actually energy
+        p = sqrt(p*p - m*m);  
+    } else {
+        return;
+    }
 
 
     // Choose Mother angles
     double thxz = 0;//0,360degrees
     double thyz = 0;//-90degrees,90degrees
 
-	std::cout<<"CHECK "<<__LINE__<<" identify mother particle angles "<<std::endl;
     if (fAngleDist == kGAUS) {
       thxz = gauss.fire(fTheta0XZ[0], fSigmaThetaXZ[0]);
       thyz = gauss.fire(fTheta0YZ[0], fSigmaThetaYZ[0]);
@@ -1134,21 +1196,45 @@ namespace evgen{
     }
     if(fverbose) std::cout<<"Mother particle angles: XZ "<<thxz<<" YZ: "<<thyz<<" Momentum: "<<p<<" mass:" <<m<<std::endl;
 
-	//Mother 4-Momentum
+    //Mother 4-Momentum
     TLorentzVector p0vec(p*std::cos(thyz*M_PI/180.0)*std::sin(thxz*M_PI/180.0),
         p*std::sin(thyz*M_PI/180.0),
         p*std::cos(thxz*M_PI/180.0)*std::cos(thyz*M_PI/180.0),
         std::sqrt(p*p+m*m));
 
-	//We also want to know the mother travel distance before entering the detector
-	double dist1 = 0;
-	if(fTraveldist1Dist == kHIST){
-		double tmpdist = 0;
-		std::cout<<"CHECK "<<__LINE__<<std::endl;
-		SelectFromHistFixX( *(hZdist1Hist[0]), CZ, tmpdist);
-		std::cout<<"CHECK "<<__LINE__<<std::endl;
-		dist1= tmpdist;
-	}
+    //We also want to know the mother travel distance before entering the detector
+    double dist1 = 0;
+    if(fTraveldist1Dist == kHIST){
+        double tmpdist = 0;
+        SelectFromHistFixX( *(hZdist1Hist[0]), CZ, tmpdist);
+        dist1= tmpdist;
+    }
+
+
+    //CHECK, we want to save t and dist1 as an object of MCFlux
+    //Option 1: translate dist1 usnig pos, boundary & p0vec.
+    std::vector<double> boxDim = {fX0[0] - fSigmaX[0], fX0[0] + fSigmaX[0],
+        fY0[0] - fSigmaY[0], fY0[0] + fSigmaY[0],
+        fZ0[0] - fSigmaZ[0], fZ0[0] + fSigmaZ[0]};
+
+    
+    TLorentzVector CreationP = GetCeationPoint(boxDim, pos, p0vec, dist1);
+    std::cout<<"Projected creation point at "<<CreationP.X()<<","<<CreationP.Y()<<","<<CreationP.Z()<<" at T="<<CreationP.T()<<std::endl;
+    //Now CreationP is the MCFlux particle
+	//What these variables hould be? See https://internal.dunescience.org/doxygen/MCFlux_8h_source.html
+    flux.Reset();
+    flux.fFluxType = simb::kNtuple;
+    
+    flux.fvx = pos.X();
+    flux.fvy = pos.Y();
+    flux.fvz = pos.Z();
+
+    flux.fgenx = CreationP.X();//mother particle creation point
+    flux.fgeny = CreationP.Y();
+    flux.fgenz = CreationP.Z();
+	flux.fdk2gen = 0;// distance from decay to ray origin .. 0?
+	flux.fgen2vtx = (CreationP.Vect() - pos.Vect()).Mag(); //distance from ray origin to event vtx.
+    //Finish adding MCFlux;
 
 
     //STEP2, daughter particles at rest frame
@@ -1170,7 +1256,7 @@ namespace evgen{
       double thyzradsplussigma = TMath::Min((thyzrads + ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), M_PI/2.);
       double thyzradsminussigma = TMath::Max((thyzrads - ((M_PI/180.)*fabs(fSigmaTheta0YZEXT[0]))), -M_PI/2.);
 
-      //            std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
+      //std::cout << "Central angle: " << (180./M_PI)*thyzrads << " Max angle: " << (180./M_PI)*thyzradsplussigma << " Min angle: " << (180./M_PI)*thyzradsminussigma << std::endl; 
 
       double sinthyzmin = std::sin(thyzradsminussigma);
       double sinthyzmax = std::sin(thyzradsplussigma);
@@ -1211,7 +1297,6 @@ namespace evgen{
     //        std::cout<<" Daughter stat : mother mass "<< m <<" boost z "<<-p0vec.Z()/p0vec.E()<<std::endl;
     //        std::cout<<" Daughter stat : mass 1 (lab) "<< dm1<<"  m2 "<<dm2<<std::endl;
 
-	  std::cout<<"CHECK "<<__LINE__<<std::endl;
     TLorentzVector p2vec(
         -p1*std::cos(Theta0YZEXT*M_PI/180.0)*std::sin(Theta0XZEXT*M_PI/180.0),
         -p1*std::sin(Theta0YZEXT*M_PI/180.0),
@@ -1280,14 +1365,14 @@ namespace evgen{
 
 
   //____________________________________________________________________________
-  void TwoBodyDecayGen::Sample(simb::MCTruth &mct) 
+  void TwoBodyDecayGen::Sample(simb::MCTruth &mct, simb::MCFlux &flux) 
   {
 
     switch (fMode) {
       case 0: // List generation mode: every event will have one of each
         // particle species in the fPDG array
         if (fSingleVertex){
-          SampleMany(mct);
+          SampleMany(mct, flux);
         }
         else{
           for (unsigned int i=0; i<fPDG.size(); ++i) {
@@ -1365,11 +1450,11 @@ namespace evgen{
 
 
     //____________________________________________________________________________
-	//For all histogram types: nbins, xlow, xup
-	//bin = 0;       underflow bin
-	//bin = 1;       first bin with low-edge xlow INCLUDED
-	//bin = nbins;   last bin with upper-edge xup EXCLUDED
-	//bin = nbins+1; overflow bin
+    //For all histogram types: nbins, xlow, xup
+    //bin = 0;       underflow bin
+    //bin = 1;       first bin with low-edge xlow INCLUDED
+    //bin = nbins;   last bin with upper-edge xup EXCLUDED
+    //bin = nbins+1; overflow bin
 
 
     double TwoBodyDecayGen::SelectFromHist(const TH1& h) // select from a 1D histogram
@@ -1406,29 +1491,29 @@ namespace evgen{
       return; // for some reason we've gone through all bins and failed?
     }
     //____________________________________________________________________________
-	// select from a 2D histogram with a fixed X
+    // select from a 2D histogram with a fixed X
     //____________________________________________________________________________
     void TwoBodyDecayGen::SelectFromHistFixX(const TH2& h, double &x, double &y) 
     {
       CLHEP::RandFlat   flat(*fEngine);
 
       double cum_value(0);
-	  for (int i(0); i < h.GetNbinsX()+1; ++i){
-		  if( !(h.GetXaxis()->GetBinLowEdge(i) < x &&  h.GetXaxis()->GetBinLowEdge(i+1) > x)) continue; 
-//		  std::cout<<"Search X value "<<x<<" btw bins "<<h.GetXaxis()->GetBinLowEdge(i) <<" and "<<h.GetXaxis()->GetBinLowEdge(i+1)<<std::endl;
+      for (int i(0); i < h.GetNbinsX()+1; ++i){
+          if( !(h.GetXaxis()->GetBinLowEdge(i) < x &&  h.GetXaxis()->GetBinLowEdge(i+1) > x)) continue; 
+//          std::cout<<"Search X value "<<x<<" btw bins "<<h.GetXaxis()->GetBinLowEdge(i) <<" and "<<h.GetXaxis()->GetBinLowEdge(i+1)<<std::endl;
 
-		  double throw_value = h.Integral(i,i,1, h.GetNbinsY()) * flat.fire();
-		  for (int j(0); j < h.GetNbinsY()+1; ++j){
-			  cum_value += h.GetBinContent(i, j);
-			  if (throw_value < cum_value){
-				  y = flat.fire()*h.GetYaxis()->GetBinWidth(j) + h.GetYaxis()->GetBinLowEdge(j);
-//				  std::cout<<"Got value: "<<y<<" at ("<<i<<","<<j<<") bin\n"<<std::endl;
-				  return;
-			  }
-		  }
-	  }
-	  return; // for some reason we've gone through all bins and failed?
-	}
+          double throw_value = h.Integral(i,i,1, h.GetNbinsY()) * flat.fire();
+          for (int j(0); j < h.GetNbinsY()+1; ++j){
+              cum_value += h.GetBinContent(i, j);
+              if (throw_value < cum_value){
+                  y = flat.fire()*h.GetYaxis()->GetBinWidth(j) + h.GetYaxis()->GetBinLowEdge(j);
+//                  std::cout<<"Got value: "<<y<<" at ("<<i<<","<<j<<") bin\n"<<std::endl;
+                  return;
+              }
+          }
+      }
+      return; // for some reason we've gone through all bins and failed?
+    }
 
     //____________________________________________________________________________
 
