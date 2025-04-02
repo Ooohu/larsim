@@ -1236,6 +1236,9 @@ namespace evgen{
 	flux.fgen2vtx = (CreationP.Vect() - pos.Vect()).Mag(); //distance from ray origin to event vtx.
     //Finish adding MCFlux;
 
+	//Now Update the pos.T() for the actual travel time
+	pos.SetT(flux.fgen2vtx*std::sqrt(1+m*m/(p*p))*(0.01*1e9/(3e8)) );
+//	std::cout<<__LINE__<<" CHECK travel time "<<pos.T()<<"ns for distance[cm] "<<flux.fgen2vtx<<std::endl;
 
     //STEP2, daughter particles at rest frame
 
