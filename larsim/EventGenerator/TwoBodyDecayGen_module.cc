@@ -564,7 +564,7 @@ namespace evgen{
 
         // Find point at a given dist along the path
         double t_length = dist;//because tmp_dir is a unit vector;
-        TVector3 creation_pos = entry - t_length * tmp_dir;
+        TVector3 creation_pos = entry - t_length * tmp_dir;//extend backward to get creation point from the event vertex
 
         TLorentzVector mpcp(creation_pos, dkvertex.T());//mother particle creation point, to be calculated
 
@@ -1106,23 +1106,51 @@ namespace evgen{
     double CZ = 0.0;//This will be the key variable connecting all relative variables. 
     //This is special, and it is measured in the NuMI coordinate. Do not use CZ to measure distance without conversion
 
-    if (fPDist == kGAUS) {
-      p = abs(gauss.fire(fP0[0], fSigmaP[0]));
-    }
-    else if (fPDist == kHIST){
 
-        // p = SelectFromHist(*(hPHist[0]));
-        double tmpCZ = 0;
-        double tmpp = 0;
-        SelectFromHist(*(hZPHist[0]), tmpCZ, tmpp);
-        CZ = tmpCZ;
-        p = tmpp;
+    // Determine mother particle mass
+    double m = 0.0;
+	
+	int repeat = 20;//in case we got E>m, re sample E and m
+	while( repeat--){
+		if (fMotherMassDist == kGAUS) {//p1vec[last_index] = p0vec upon initialization;
+			m = gauss.fire(fMotherMass[0], fSigmaMotherMass[0]);
+		}
+		else {
+			m = fMotherMass[0] + fSigmaMotherMass[0]*(2.0*flat.fire()-1.0);
+		}
 
-    }
-    else {
-      std::cout<<"Error, momentum has to be drawn from the histogram"<<std::endl;
-      p = fP0[0] + fSigmaP[0]*(2.0*flat.fire()-1.0);
-    }
+
+		double E=0;
+		if (fPDist == kGAUS) {
+			E = abs(gauss.fire(fP0[0], fSigmaP[0]));
+		}
+		else if (fPDist == kHIST){
+
+			// p = SelectFromHist(*(hPHist[0]));
+			double tmpCZ = 0;
+			double tmpp = 0;
+			SelectFromHist(*(hZPHist[0]), tmpCZ, tmpp);
+			CZ = tmpCZ;
+			E = tmpp;
+
+		}
+		else {
+			std::cout<<"Error, momentum has to be drawn from the histogram"<<std::endl;
+			E = fP0[0] + fSigmaP[0]*(2.0*flat.fire()-1.0);
+		}
+
+
+		//Need to correct p, which was taken as energy
+		if(E > m ){//Physical, p was actually energy
+			p = sqrt(E*E - m*m);  
+			break;
+		} else if (repeat==0){
+			std::cout<<"Warning: could not produce event with E>m, produce an invalid event now."<<std::endl;
+			return;//gonna throw out a trash event;
+		} else{
+			std::cout<<"E="<<E<<" and m="<<m<<" is not physical. Resample. "<<std::endl;
+		}
+	}
 
     //Choose Time
     double t = 0.;
@@ -1139,24 +1167,8 @@ namespace evgen{
       t = fT0[0] + fSigmaT[0]*(2.0*flat.fire()-1.0);
     }
 
+
     TLorentzVector pos(x[0], x[1], x[2], t);
-
-
-    // Determine mother particle mass
-    double m = 0.0;
-    if (fMotherMassDist == kGAUS) {//p1vec[last_index] = p0vec upon initialization;
-      m = gauss.fire(fMotherMass[0], fSigmaMotherMass[0]);
-    }
-    else {
-      m = fMotherMass[0] + fSigmaMotherMass[0]*(2.0*flat.fire()-1.0);
-    }
-
-    //Need to correct p, which was taken as energy
-    if(p > m ){//Physical, p was actually energy
-        p = sqrt(p*p - m*m);  
-    } else {
-        return;
-    }
 
 
     // Choose Mother angles
@@ -1211,16 +1223,16 @@ namespace evgen{
     }
 
 
-    //CHECK, we want to save t and dist1 as an object of MCFlux
-    //Option 1: translate dist1 usnig pos, boundary & p0vec.
+    //We want to save t and dist1 as an object of MCFlux
+    //Current Solution: translate dist1 usnig pos, boundary & p0vec.
     std::vector<double> boxDim = {fX0[0] - fSigmaX[0], fX0[0] + fSigmaX[0],
         fY0[0] - fSigmaY[0], fY0[0] + fSigmaY[0],
         fZ0[0] - fSigmaZ[0], fZ0[0] + fSigmaZ[0]};
 
     
-    TLorentzVector CreationP = GetCeationPoint(boxDim, pos, p0vec, dist1);
-    std::cout<<"Projected creation point at "<<CreationP.X()<<","<<CreationP.Y()<<","<<CreationP.Z()<<" at T="<<CreationP.T()<<std::endl;
-    //Now CreationP is the MCFlux particle
+    TLorentzVector CraetionPoint = GetCeationPoint(boxDim, pos, p0vec, dist1);//should be larger than dist1
+    std::cout<<"Projected creation point at "<<CraetionPoint.X()<<","<<CraetionPoint.Y()<<","<<CraetionPoint.Z()<<" at T="<<CraetionPoint.T()<<std::endl;
+    //Now CraetionPoint is the MCFlux particle
 	//What these variables hould be? See https://internal.dunescience.org/doxygen/MCFlux_8h_source.html
     flux.Reset();
     flux.fFluxType = simb::kNtuple;
@@ -1229,15 +1241,16 @@ namespace evgen{
     flux.fvy = pos.Y();
     flux.fvz = pos.Z();
 
-    flux.fgenx = CreationP.X();//mother particle creation point
-    flux.fgeny = CreationP.Y();
-    flux.fgenz = CreationP.Z();
-	flux.fdk2gen = 0;// distance from decay to ray origin .. 0?
-	flux.fgen2vtx = (CreationP.Vect() - pos.Vect()).Mag(); //distance from ray origin to event vtx.
+    flux.fgenx = CraetionPoint.X();//mother particle creation point
+    flux.fgeny = CraetionPoint.Y();
+    flux.fgenz = CraetionPoint.Z();
+	flux.fdk2gen = CZ;// distance from decay (beam start) to ray origin (axion creation); beam_vertex to dk vertex
+	flux.fgen2vtx = (CraetionPoint.Vect() - pos.Vect()).Mag(); //distance from ray origin (axion creation) to event vtx; baseline = mcflux.fdk2gen + mcflux.fgen2vtx
     //Finish adding MCFlux;
 
 	//Now Update the pos.T() for the actual travel time
-	pos.SetT(flux.fgen2vtx*std::sqrt(1+m*m/(p*p))*(0.01*1e9/(3e8)) );
+	double CT = pos.T();//Save the creation time draw from the TH2D hist
+	pos.SetT(CT + flux.fgen2vtx*std::sqrt(1+m*m/(p*p))*(0.01*1e9/(3e8)) );
 //	std::cout<<__LINE__<<" CHECK travel time "<<pos.T()<<"ns for distance[cm] "<<flux.fgen2vtx<<std::endl;
 
     //STEP2, daughter particles at rest frame
@@ -1335,6 +1348,7 @@ namespace evgen{
       std::cout<<std::setw(11)<<"T ";
       std::cout<<std::setw(11)<<"CZ ";
       std::cout<<std::setw(11)<<"Dist1 ";
+      std::cout<<std::setw(11)<<"T Arrival";
       std::cout<<std::endl;
 
       std::cout<<std::setw(12)<<"Mother";
@@ -1345,9 +1359,10 @@ namespace evgen{
       std::cout<<std::setw(11)<<pos.X();
       std::cout<<std::setw(11)<<pos.Y();
       std::cout<<std::setw(11)<<pos.Z();
+      std::cout<<std::setw(11)<<CT;
+      std::cout<<std::setw(11)<<flux.fdk2gen;
+      std::cout<<std::setw(11)<<flux.fgen2vtx;
       std::cout<<std::setw(11)<<pos.T();
-      std::cout<<std::setw(11)<<CZ;
-      std::cout<<std::setw(11)<<dist1;
       std::cout<<std::endl;
 
       std::cout<<std::setw(12)<<"Daug. 1";
