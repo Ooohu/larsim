@@ -1102,6 +1102,7 @@ namespace evgen{
     // define the momentum & Creation Z --> Arrival time, XZ, and YZ angle
     // Choose momentum
     double p = 0.0;
+	double E=0.0;
 
     double CZ = 0.0;//This will be the key variable connecting all relative variables. 
     //This is special, and it is measured in the NuMI coordinate. Do not use CZ to measure distance without conversion
@@ -1120,7 +1121,6 @@ namespace evgen{
 		}
 
 
-		double E=0;
 		if (fPDist == kGAUS) {
 			E = abs(gauss.fire(fP0[0], fSigmaP[0]));
 		}
@@ -1245,12 +1245,13 @@ namespace evgen{
     flux.fgeny = CraetionPoint.Y();
     flux.fgenz = CraetionPoint.Z();
 	flux.fdk2gen = CZ;// distance from decay (beam start) to ray origin (axion creation); beam_vertex to dk vertex
+//	flux.fdk2gen = pos.T();// save the creation time for debug purpose
 	flux.fgen2vtx = (CraetionPoint.Vect() - pos.Vect()).Mag(); //distance from ray origin (axion creation) to event vtx; baseline = mcflux.fdk2gen + mcflux.fgen2vtx
     //Finish adding MCFlux;
 
 	//Now Update the pos.T() for the actual travel time
 	double CT = pos.T();//Save the creation time draw from the TH2D hist
-	pos.SetT(CT + flux.fgen2vtx*std::sqrt(1+m*m/(p*p))*(0.01*1e9/(3e8)) );
+	pos.SetT(CT + flux.fgen2vtx*E/(p*3e8)*(0.01*1e9) );//t=t0+(L*E)/(p*c^2)
 //	std::cout<<__LINE__<<" CHECK travel time "<<pos.T()<<"ns for distance[cm] "<<flux.fgen2vtx<<std::endl;
 
     //STEP2, daughter particles at rest frame
